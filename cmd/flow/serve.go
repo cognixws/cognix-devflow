@@ -23,6 +23,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/cognixws/picode-devflow/internal/hostapi"
 )
 
 // Run is one long command the background process ran for an agent or a
@@ -31,6 +33,7 @@ type Run struct {
 	ID        string          `json:"id"`
 	Kind      string          `json:"kind"`
 	WorkDir   string          `json:"workDir"`
+	Branch    string          `json:"branch,omitempty"`
 	Args      []string        `json:"args"`
 	State     string          `json:"state"` // running | done | interrupted
 	ExitCode  int             `json:"exitCode"`
@@ -96,6 +99,10 @@ func cmdServe(args []string, stdout io.Writer) error {
 	mux.HandleFunc("POST /runs", s.auth(s.start))
 	mux.HandleFunc("GET /runs/{id}", s.auth(s.get))
 	mux.HandleFunc("GET /runs", s.auth(s.list))
+	mux.HandleFunc("GET /page/workspaces", s.pageWorkspaces)
+	mux.HandleFunc("GET /page/board", s.page(s.pageBoard))
+	mux.HandleFunc("GET /page/checks", s.page(s.pageChecks))
+	mux.HandleFunc("GET /page/activity", s.page(s.pageActivity))
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -177,12 +184,13 @@ func (s *server) start(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	id := time.Now().UTC().Format("20060102T150405") + "-" + randHex(3)
-	run := &Run{ID: id, Kind: req.Kind, WorkDir: req.WorkDir, Args: append([]string{}, req.Args...), State: "running", StartedAt: time.Now().UTC()}
+	run := &Run{ID: id, Kind: req.Kind, WorkDir: req.WorkDir, Branch: branchOf(req.WorkDir), Args: append([]string{}, req.Args...), State: "running", StartedAt: time.Now().UTC()}
 	s.runs[id] = run
 	done := make(chan struct{})
 	s.done[id] = done
 	s.save(run)
 	s.mu.Unlock()
+	s.announce(run)
 	go s.execute(run, done)
 	writeJSON(w, run)
 }
@@ -214,6 +222,7 @@ func (s *server) execute(run *Run, done chan struct{}) {
 	delete(s.done, run.ID)
 	s.mu.Unlock()
 	close(done)
+	s.announce(run)
 }
 
 func (s *server) get(w http.ResponseWriter, r *http.Request) {
@@ -286,4 +295,15 @@ func envInt(k string, def int) int {
 		return v
 	}
 	return def
+}
+
+// announce tells open Dev flow pages a run started or ended, so they read
+// again instead of waiting for their next look.
+func (s *server) announce(run *Run) {
+	if h := hostapi.FromEnv(); h != nil {
+		s.mu.Lock()
+		data := map[string]any{"id": run.ID, "kind": run.Kind, "state": run.State, "workDir": run.WorkDir}
+		s.mu.Unlock()
+		go h.Publish("runs", data)
+	}
 }

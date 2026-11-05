@@ -1,20 +1,26 @@
 {
   "id": "picode-devflow",
   "name": "Dev flow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "apiVersion": 2,
   "publisher": "COGNIX[WS]",
   "description": "The development flow for any stack: one worktree per agent, the checks each change needs, a close that lists what is still owed, handoff notes, debts and decision records. Your project binds it to its own commands in .picode.json.",
   "icon": "icons/devflow.svg",
   "process": {
     "command": "/bin/sh",
-    "args": ["${extensionDir}/bin/flow.sh", "serve"]
+    "args": [
+      "${extensionDir}/bin/flow.sh",
+      "serve"
+    ]
   },
   "agent": {
     "executor": {
       "protocol": "picode-tools/1",
       "command": "/bin/sh",
-      "args": ["${extensionDir}/bin/flow.sh", "tools-exec"]
+      "args": [
+        "${extensionDir}/bin/flow.sh",
+        "tools-exec"
+      ]
     },
     "capabilities": [
       {
@@ -25,7 +31,11 @@
           {
             "id": "status",
             "description": "Where your checkout stands: branch, ahead/behind main, uncommitted files, the checks this change needs, what is still owed, and the next step. Call it first, and whenever you are unsure what to do next.",
-            "inputSchema": { "type": "object", "properties": {}, "additionalProperties": false }
+            "inputSchema": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
           },
           {
             "id": "check",
@@ -33,8 +43,15 @@
             "inputSchema": {
               "type": "object",
               "properties": {
-                "full": { "type": "boolean", "description": "Run the full gate instead of the checks this change selects." },
-                "only": { "type": "string", "description": "Run one named check.", "maxLength": 40 }
+                "full": {
+                  "type": "boolean",
+                  "description": "Run the full gate instead of the checks this change selects."
+                },
+                "only": {
+                  "type": "string",
+                  "description": "Run one named check.",
+                  "maxLength": 40
+                }
               },
               "additionalProperties": false
             }
@@ -44,22 +61,39 @@
             "description": "Close your change when the work is committed: runs its checks (reusing passes on the same content), applies the project's rules, and lists what is still owed before landing (handoff note, changelog fragment, index row). Use strict=true right before landing.",
             "inputSchema": {
               "type": "object",
-              "properties": { "strict": { "type": "boolean", "description": "Fail when something is still owed." } },
+              "properties": {
+                "strict": {
+                  "type": "boolean",
+                  "description": "Fail when something is still owed."
+                }
+              },
               "additionalProperties": false
             }
           },
           {
             "id": "land",
             "description": "Land your closed change on main with the project's own land command. When the project has none, it says the change lands through Merge, where the person merges it.",
-            "inputSchema": { "type": "object", "properties": {}, "additionalProperties": false }
+            "inputSchema": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
           },
           {
             "id": "wait",
             "description": "Keep waiting for a check, close or land that answered 'still running', by its run id.",
             "inputSchema": {
               "type": "object",
-              "properties": { "run": { "type": "string", "minLength": 1, "maxLength": 64 } },
-              "required": ["run"],
+              "properties": {
+                "run": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                }
+              },
+              "required": [
+                "run"
+              ],
               "additionalProperties": false
             }
           },
@@ -69,12 +103,31 @@
             "inputSchema": {
               "type": "object",
               "properties": {
-                "topic": { "type": "string", "minLength": 1, "maxLength": 64, "description": "Topic file name: lower-case letters, digits, dashes." },
-                "text": { "type": "string", "minLength": 1, "maxLength": 500, "description": "The debt, one sentence; with pay=true, the start of the open item." },
-                "pay": { "type": "boolean" },
-                "note": { "type": "string", "maxLength": 200, "description": "With pay=true: how it was paid." }
+                "topic": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Topic file name: lower-case letters, digits, dashes."
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": "The debt, one sentence; with pay=true, the start of the open item."
+                },
+                "pay": {
+                  "type": "boolean"
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 200,
+                  "description": "With pay=true: how it was paid."
+                }
               },
-              "required": ["topic", "text"],
+              "required": [
+                "topic",
+                "text"
+              ],
               "additionalProperties": false
             }
           },
@@ -84,10 +137,20 @@
             "inputSchema": {
               "type": "object",
               "properties": {
-                "name": { "type": "string", "minLength": 1, "maxLength": 60, "description": "Short file name: lower-case letters, digits, dashes." },
-                "title": { "type": "string", "maxLength": 120 }
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60,
+                  "description": "Short file name: lower-case letters, digits, dashes."
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 120
+                }
               },
-              "required": ["name"],
+              "required": [
+                "name"
+              ],
               "additionalProperties": false
             }
           },
@@ -96,14 +159,53 @@
             "description": "Read one of the Dev flow's guides when your CLI did not load it as a skill.",
             "inputSchema": {
               "type": "object",
-              "properties": { "topic": { "type": "string", "enum": ["quality-gate", "handoff-note", "decision-record", "decision-table"] } },
-              "required": ["topic"],
+              "properties": {
+                "topic": {
+                  "type": "string",
+                  "enum": [
+                    "quality-gate",
+                    "handoff-note",
+                    "decision-record",
+                    "decision-table",
+                    "dev-flow-setup"
+                  ]
+                }
+              },
+              "required": [
+                "topic"
+              ],
               "additionalProperties": false
             }
           }
         ]
       }
     ],
-    "skills": ["skills/quality-gate", "skills/handoff-note", "skills/decision-record", "skills/decision-table"]
+    "skills": [
+      "skills/quality-gate",
+      "skills/handoff-note",
+      "skills/decision-record",
+      "skills/decision-table",
+      "skills/dev-flow-setup"
+    ]
+  },
+  "permissions": [
+    "workspaces:read",
+    "agents:read",
+    "events:publish"
+  ],
+  "ui": {
+    "pages": [
+      {
+        "id": "board",
+        "title": "Dev flow",
+        "path": "ui/index.html"
+      }
+    ]
+  },
+  "contributes": {
+    "workspace": {
+      "title": "Dev flow",
+      "page": "board"
+    }
   }
 }
