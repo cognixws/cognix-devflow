@@ -1,0 +1,3 @@
+#!/bin/sh
+# Dev flow git protection (ADR-0401): the flow's rules, then the project's own hook.
+exec /bin/sh "$(dirname "$0")/../bin/flow.sh" hook pre-commit "$@"

@@ -193,10 +193,19 @@ func (s *session) recordFlakes(check string, tests []string) {
 }
 
 func (s *session) findings(withGenerated bool) ([]validate.Finding, error) {
-	return validate.Run(validate.Input{
+	fs, err := validate.Run(validate.Input{
 		Repo: s.repo, Contract: s.c, Base: s.base, Head: s.head, Branch: s.branch,
 		Date: time.Now().Format("2006-01-02"),
 	}, withGenerated)
+	if err != nil {
+		return nil, err
+	}
+	// Git protection turned on here and reset by a tool since (husky's
+	// prepare does it on npm install): say so on every status and close.
+	if st, herr := readHooks(s.repo); herr == nil && st.Reset {
+		fs = append(fs, validate.Finding{Level: validate.Warn, Code: "hooks-reset", Message: "Git protection was turned on in this clone, but core.hooksPath now points elsewhere", Fix: "run `flow hooks on` again, or turn it on from the Dev flow page"})
+	}
+	return fs, nil
 }
 
 func short(rev string) string {

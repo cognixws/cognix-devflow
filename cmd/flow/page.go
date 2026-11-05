@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/cognixws/picode-devflow/internal/contract"
+	"github.com/cognixws/picode-devflow/internal/gitx"
 	"github.com/cognixws/picode-devflow/internal/hostapi"
 )
 
@@ -186,12 +187,13 @@ type noteOut struct {
 
 type boardOut struct {
 	gate
-	Main     string     `json:"main"`
-	Checks   int        `json:"checks"`
-	Full     string     `json:"full,omitempty"`
-	InFlight []rowOut   `json:"inFlight"`
-	Topics   []topicOut `json:"topics"`
-	Notes    []noteOut  `json:"notes"`
+	Hooks    *hooksState `json:"hooks,omitempty"`
+	Main     string      `json:"main"`
+	Checks   int         `json:"checks"`
+	Full     string      `json:"full,omitempty"`
+	InFlight []rowOut    `json:"inFlight"`
+	Topics   []topicOut  `json:"topics"`
+	Notes    []noteOut   `json:"notes"`
 }
 
 func (s *server) pageBoard(w http.ResponseWriter, r *http.Request, ws pageWorkspace) {
@@ -227,6 +229,11 @@ func (s *server) pageBoard(w http.ResponseWriter, r *http.Request, ws pageWorksp
 	main := ws.Path
 	if len(trees) > 0 {
 		main = trees[0].Path
+	}
+	if r, err := gitx.Open(main); err == nil {
+		if st, err := readHooks(r); err == nil {
+			out.Hooks = &st
+		}
 	}
 	out.Topics = topics(filepath.Join(main, c.Docs.Topics))
 	out.Notes = notes(filepath.Join(main, c.Docs.Notes))
@@ -626,4 +633,29 @@ func (s *server) pageActivity(w http.ResponseWriter, r *http.Request, ws pageWor
 
 func branchOf(dir string) string {
 	return gitOut(dir, "symbolic-ref", "--quiet", "--short", "HEAD")
+}
+
+// pageHooks turns git protection on or off in the workspace's clone, on the
+// person's click (the manifest declares gitHooks, shown at install).
+func (s *server) pageHooks(w http.ResponseWriter, r *http.Request, ws pageWorkspace) {
+	var req struct {
+		On bool `json:"on"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req); err != nil {
+		pageErr(w, http.StatusBadRequest, "Say on or off.")
+		return
+	}
+	verb := "off"
+	if req.On {
+		verb = "on"
+	}
+	cmd := exec.Command(s.exe, "hooks", "--json", verb)
+	cmd.Dir = ws.Path
+	out, err := cmd.Output()
+	if err != nil {
+		pageErr(w, http.StatusBadGateway, "Git protection could not be changed here.")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(out)
 }

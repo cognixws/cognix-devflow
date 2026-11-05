@@ -27,6 +27,7 @@ const usage = `flow — the Dev flow engine
   flow adr      [--title t] <name>       seed a decision record with the next free number
   flow guide    [topic]                  print a craft guide (quality-gate, handoff-note, …)
   flow land     [--json]                 run the project's own land command (contract "land")
+  flow hooks    on|off|check [--json]   git protection in this clone (core.hooksPath)
   flow serve    [--port p] [--data d]    the background process COGNIX[WS] runs
   flow tools-exec                        one agent tool call (picode-tools/1 on stdin)
   flow version
@@ -72,6 +73,10 @@ func runMain(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		err = cmdServe(args[1:], stdout)
 	case "tools-exec":
 		err = cmdToolsExec(stdin, stdout)
+	case "hooks":
+		err = cmdHooks(args[1:], stdout)
+	case "hook":
+		err = cmdHook(args[1:], stdin, stderr)
 	case "version", "--version":
 		fmt.Fprintln(stdout, "flow", version)
 	case "help", "-h", "--help":

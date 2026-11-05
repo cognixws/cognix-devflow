@@ -103,6 +103,7 @@ func cmdServe(args []string, stdout io.Writer) error {
 	mux.HandleFunc("GET /page/board", s.page(s.pageBoard))
 	mux.HandleFunc("GET /page/checks", s.page(s.pageChecks))
 	mux.HandleFunc("GET /page/activity", s.page(s.pageActivity))
+	mux.HandleFunc("POST /page/hooks", s.page(s.pageHooks))
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)

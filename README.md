@@ -12,7 +12,8 @@ else is the same for every repository.
 Status: **0.2** — the `flow` engine, the agent side (tools for the eight
 agent CLIs, craft skills, the background process) and the **Dev flow**
 workspace page (Board, Checks, Activity), with "Set up with an agent" for a
-repository that has no contract yet. Git protection and merges follow. Design:
+repository that has no contract yet, and **git protection** per clone
+(`flow hooks on|off|check`; turned on from the page). Merges follow. Design:
 ADR-0401 in the COGNIX[WS] repository.
 
 ## In COGNIX[WS]

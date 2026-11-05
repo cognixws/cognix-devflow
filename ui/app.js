@@ -18,9 +18,9 @@
 
   const SETUP_TASK = "Set up the Dev flow for this repository: follow the dev-flow-setup guide (the Dev flow guide tool, topic dev-flow-setup, or the skill of that name). Bind it only to commands the project already runs, add the Dev flow block to AGENTS.md, commit on a branch of your own, and stop: the person reviews the checks before anything runs.";
 
-  async function request(path) {
+  async function request(path, body) {
     if (!proc) throw new Error("The Dev flow's process is not running.");
-    const r = await proc.request(path, { method: "GET" });
+    const r = await proc.request(path, body ? { method: "POST", body } : { method: "GET" });
     let d; try { d = JSON.parse(r.body); } catch { throw new Error("The Dev flow returned an unreadable answer."); }
     if (r.status >= 400) throw new Error(d.error || "The Dev flow could not read this workspace.");
     return d;
@@ -111,7 +111,11 @@
     const notes = (d.notes || []).length
       ? d.notes.map((n) => `<li><div class="t-head"><span class="title">${esc(n.title)}</span><span class="muted">${esc(n.date)}</span></div></li>`).join("")
       : `<li class="muted">No notes this week.</li>`;
-    return `${head}<h2>In flight</h2>${table}
+    const h = d.hooks;
+    const guard = !h ? "" : h.on
+      ? `<div class="tile"><span>The branch <span class="mono">${esc(d.main)}</span> is protected here: agents can't commit to it or rewrite its history.</span><button type="button" data-act="hooks-off">Turn off protection</button></div>`
+      : `<div class="tile"><span>${h.reset ? "Protection of " + esc(d.main) + " was switched off by another tool. Agents can commit straight to it again." : "Agents can still commit straight to " + esc(d.main) + " in this project."}</span><button type="button" data-act="hooks-on">Protect ${esc(d.main)}</button></div>`;
+    return `${head}${guard}<h2>In flight</h2>${table}
       <div class="cols2"><div><h2>Next up</h2><ul class="list">${topics}</ul></div><div><h2>Recent notes</h2><ul class="list">${notes}</ul></div></div>`;
   }
 
@@ -174,6 +178,14 @@
       case "agent": ws?.newAgent({}); break;
       case "review": ws?.settings({ section: "scripts" }); break;
       case "retry": loading = true; render(); load(); break;
+      case "hooks-on": case "hooks-off": {
+        const on = a.dataset.act === "hooks-on";
+        a.disabled = true; a.textContent = on ? "Turning on…" : "Turning off…";
+        request("/page/hooks?workspace=" + encodeURIComponent(w.id), { on })
+          .then(() => { live.textContent = on ? "Git protection is on." : "Git protection is off."; load(); })
+          .catch(() => { error = on ? "Couldn't protect it. Try again." : "Couldn't turn protection off. Try again."; render(); });
+        break;
+      }
       case "ext": links?.open(location.origin + "/#/extensions/picode-devflow"); break;
     }
     if (w) live.textContent = "";
