@@ -9,9 +9,10 @@ The engine never calls `go`, `npm` or `pytest` on its own: your project says
 which commands are its checks and which paths make each one run. Everything
 else is the same for every repository.
 
-Status: **0.1** — the `flow` engine and the COGNIX[WS] extension's agent
-side (tools for the eight agent CLIs, craft skills, the background process).
-The Dev flow workspace page, git protection and merges follow. Design:
+Status: **0.2** — the `flow` engine, the agent side (tools for the eight
+agent CLIs, craft skills, the background process) and the **Dev flow**
+workspace page (Board, Checks, Activity), with "Set up with an agent" for a
+repository that has no contract yet. Git protection and merges follow. Design:
 ADR-0401 in the COGNIX[WS] repository.
 
 ## In COGNIX[WS]
