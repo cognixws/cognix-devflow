@@ -157,3 +157,44 @@ func (c *Client) Publish(name string, data any) error {
 	}
 	return nil
 }
+
+// MergeEntry is the part of a core merge entry the flow reads.
+type MergeEntry struct {
+	ID          string `json:"id"`
+	State       string `json:"state"`
+	Note        string `json:"note"`
+	Target      string `json:"target"`
+	RequestedBy string `json:"requestedBy"`
+}
+
+// RequestMerge asks the core to merge an agent's change (merge:request).
+func (c *Client) RequestMerge(agentID string) (MergeEntry, error) {
+	b, _ := json.Marshal(map[string]string{"agentId": agentID})
+	req, _ := http.NewRequest("POST", c.base+"/api/ext/v1/merge", bytes.NewReader(b))
+	req.Header.Set("X-PiCode-Extension-Token", c.token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return MergeEntry{}, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	var out struct {
+		Entry MergeEntry `json:"entry"`
+		Error string     `json:"error"`
+	}
+	_ = json.Unmarshal(raw, &out)
+	if resp.StatusCode != 200 {
+		return MergeEntry{}, ErrStatus{resp.StatusCode, out.Error}
+	}
+	return out.Entry, nil
+}
+
+// MergeState reads one merge this extension asked for.
+func (c *Client) MergeState(agentID, entryID string) (MergeEntry, error) {
+	var out struct {
+		Entry MergeEntry `json:"entry"`
+	}
+	err := c.get("/api/ext/v1/merge?agentId="+url.QueryEscape(agentID)+"&entry="+url.QueryEscape(entryID), &out)
+	return out.Entry, err
+}

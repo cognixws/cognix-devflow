@@ -34,6 +34,7 @@ type Run struct {
 	Kind      string          `json:"kind"`
 	WorkDir   string          `json:"workDir"`
 	Branch    string          `json:"branch,omitempty"`
+	Agent     string          `json:"agent,omitempty"`
 	Args      []string        `json:"args"`
 	State     string          `json:"state"` // running | done | interrupted
 	ExitCode  int             `json:"exitCode"`
@@ -158,6 +159,7 @@ type startReq struct {
 	WorkDir string   `json:"workDir"`
 	Kind    string   `json:"kind"`
 	Args    []string `json:"args"`
+	Agent   string   `json:"agent,omitempty"` // the agent that asked, for a land through the core
 }
 
 func (s *server) start(w http.ResponseWriter, r *http.Request) {
@@ -185,7 +187,7 @@ func (s *server) start(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	id := time.Now().UTC().Format("20060102T150405") + "-" + randHex(3)
-	run := &Run{ID: id, Kind: req.Kind, WorkDir: req.WorkDir, Branch: branchOf(req.WorkDir), Args: append([]string{}, req.Args...), State: "running", StartedAt: time.Now().UTC()}
+	run := &Run{ID: id, Kind: req.Kind, WorkDir: req.WorkDir, Branch: branchOf(req.WorkDir), Args: append([]string{}, req.Args...), Agent: req.Agent, State: "running", StartedAt: time.Now().UTC()}
 	s.runs[id] = run
 	done := make(chan struct{})
 	s.done[id] = done
@@ -202,6 +204,9 @@ func (s *server) execute(run *Run, done chan struct{}) {
 	cmd := exec.Command(s.exe, append([]string{run.Kind, "--json"}, run.Args...)...)
 	cmd.Dir = run.WorkDir
 	cmd.Env = os.Environ()
+	if run.Agent != "" {
+		cmd.Env = append(cmd.Env, "FLOW_AGENT="+run.Agent)
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()

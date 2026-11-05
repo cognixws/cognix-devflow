@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -11,9 +12,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/cognixws/picode-devflow/internal/docsops"
 	"github.com/cognixws/picode-devflow/internal/gitx"
+	"github.com/cognixws/picode-devflow/internal/hostapi"
 	"github.com/cognixws/picode-devflow/skills"
 )
 
@@ -121,7 +124,7 @@ func cmdLand(args []string, w io.Writer) error {
 	case len(s.dirty) > 0:
 		out.Next = "commit or discard the uncommitted paths first"
 	case s.c.Land == "":
-		out.Next = "this project lands through Merge in COGNIX[WS]: the change is ready when close passes; ask the person to merge it from the Merge tab"
+		return landThroughMerge(w, *asJSON, out)
 	}
 	if out.Next != "" {
 		return emitLand(w, *asJSON, out, 1)
@@ -180,4 +183,43 @@ func emit(w io.Writer, asJSON bool, v any, text string) error {
 	}
 	_, err := fmt.Fprintln(w, text)
 	return err
+}
+
+// landThroughMerge asks COGNIX[WS]'s Merge for the agent's change (Who
+// merges, ADR-0401 F4c) and waits for the outcome. Outside COGNIX[WS], or
+// where the person merges, it says so.
+func landThroughMerge(w io.Writer, asJSON bool, out landOut) error {
+	host, agent := hostapi.FromEnv(), os.Getenv("FLOW_AGENT")
+	if host == nil || agent == "" {
+		out.Next = "this project lands through Merge in COGNIX[WS]: the change is ready when close passes; ask the person to merge it from the Merge tab"
+		return emitLand(w, asJSON, out, 1)
+	}
+	e, err := host.RequestMerge(agent)
+	if err != nil {
+		var st hostapi.ErrStatus
+		if errors.As(err, &st) && st.Msg != "" {
+			out.Next = st.Msg
+		} else {
+			out.Next = "Merge could not be asked: " + err.Error()
+		}
+		return emitLand(w, asJSON, out, 1)
+	}
+	deadline := time.Now().Add(50 * time.Minute)
+	for (e.State == "authorized" || e.State == "running" || e.State == "waiting") && time.Now().Before(deadline) {
+		time.Sleep(3 * time.Second)
+		if next, err := host.MergeState(agent, e.ID); err == nil {
+			e = next
+		}
+	}
+	out.Tail = e.Note
+	switch e.State {
+	case "done":
+		out.OK, out.Next = true, "landed: "+out.Branch+" is on "+or(e.Target, "the target")
+		return emitLand(w, asJSON, out, 0)
+	case "failed":
+		out.Next = "Merge stopped: " + e.Note
+	default:
+		out.Next = "still merging after 50 minutes; the Merge tab shows where it is"
+	}
+	return emitLand(w, asJSON, out, 1)
 }
