@@ -91,6 +91,7 @@ Add a section to `.picode.json` at the root of your repository:
 | `generated` | A command whose output files must be committed |
 | `docs` | `notes`, `topics`, `changelog`, `decisions`, `books` folders (defaults under `docs/`) |
 | `modules` | `handoff`, `changelog`, `decisions`, `books`, `ui-review` |
+| `ui` | Paths whose change owes a UI review (module `ui-review`, which needs `handoff`); default: `.jsx`, `.tsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.html` files. The note carries `uiux-review:` and `visual-review:` lines; `FAIL` stops the close |
 | `noteMaxLines` | Default 25 |
 | `quarantine` | A file of test names (one per line) whose failures do not fail a check |
 | `land` | The project's own land command, run from the main checkout with `{branch}` filled in; without it, changes land through Merge |

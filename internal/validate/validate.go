@@ -68,6 +68,9 @@ func Run(in Input, withGenerated bool) ([]Finding, error) {
 	if c.HasModule("changelog") {
 		out = append(out, changelog(c, changed)...)
 	}
+	if c.HasModule("ui-review") {
+		out = append(out, uiReview(in, changed)...)
+	}
 	if c.HasModule("decisions") {
 		out = append(out, decisions(in, written)...)
 	}
@@ -306,6 +309,58 @@ func generated(in Input) []Finding {
 		}
 		if len(stale) > 0 {
 			out = append(out, Finding{Level: Fail, Code: "generated-stale", Message: fmt.Sprintf("%s changed %s", g.Run, strings.Join(stale, ", ")), Fix: "commit the regenerated files"})
+		}
+	}
+	return out
+}
+
+// DefaultUI is what counts as a screen when the contract names no ui paths.
+var DefaultUI = []string{"**/*.jsx", "**/*.tsx", "**/*.vue", "**/*.svelte", "**/*.css", "**/*.scss", "**/*.html"}
+
+var verdictLine = regexp.MustCompile(`(?m)^\s*(uiux-review|visual-review):\s*(PASS|FAIL|SKIP)\b`)
+
+// uiReview (module ui-review): a change to a screen owes the two verdicts
+// of the ui-review skill in the handoff note — the review done before the
+// edit and the screenshots read after — and a FAIL stops the close.
+func uiReview(in Input, changed []string) []Finding {
+	c := in.Contract
+	ui := c.UI
+	if len(ui) == 0 {
+		ui = DefaultUI
+	}
+	var trig string
+	for _, p := range changed {
+		if glob.Any(ui, p) {
+			trig = p
+			break
+		}
+	}
+	if trig == "" {
+		return nil
+	}
+	dir, slug := strings.TrimSuffix(c.Docs.Notes, "/"), Slug(in.Branch)
+	var body string
+	for _, p := range changed {
+		if path.Dir(p) == dir && strings.HasSuffix(p, "-"+slug+".md") {
+			if b, err := in.Repo.Show(in.Head, p); err == nil {
+				body = string(b)
+			}
+		}
+	}
+	got := map[string]string{}
+	for _, m := range verdictLine.FindAllStringSubmatch(body, -1) {
+		got[m[1]] = m[2]
+	}
+	var out []Finding
+	for _, k := range []string{"uiux-review", "visual-review"} {
+		switch got[k] {
+		case "PASS":
+		case "":
+			out = append(out, Finding{Level: Owed, Code: "ui-review", Message: fmt.Sprintf("%s changed a screen, so the handoff note owes a %q line", trig, k+": PASS"),
+				Fix: "follow the ui-review guide (flow guide ui-review), then write the verdict line"})
+		default:
+			out = append(out, Finding{Level: Fail, Code: "ui-review", Message: fmt.Sprintf("the note says %s: %s; a screen that failed its review does not land", k, got[k]),
+				Fix: "fix what the review found and review again"})
 		}
 	}
 	return out

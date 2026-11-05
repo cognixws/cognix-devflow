@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func git(t *testing.T, dir string, args ...string) string {
@@ -217,4 +218,42 @@ func TestLandGatesOnTheTargetContract(t *testing.T) {
 			t.Fatalf("%d %s", code, out)
 		}
 	})
+}
+
+// Decision table (module ui-review): a change to a screen owes two verdict
+// lines in the handoff note.
+//
+//	# | changed            | note says                               | close
+//	1 | src/app.css        | no verdict lines                        | owes uiux-review and visual-review
+//	2 | src/app.css        | uiux-review: PASS, visual-review: PASS  | nothing owed for the UI
+//	3 | src/app.css        | visual-review: FAIL                     | fails
+//	4 | src/cart.go only   | nothing                                 | nothing owed for the UI
+func TestUIReviewModule(t *testing.T) {
+	file := strings.Replace(contractFile, `"modules":["handoff"]`, `"modules":["handoff","ui-review"]`, 1)
+	run := func(t *testing.T, files map[string]string) (int, string) {
+		dir := t.TempDir()
+		git(t, dir, "init", "-q", "-b", "main")
+		write(t, dir, map[string]string{".picode.json": file, "README.md": "r\n", ".gitignore": "runs.log\n"})
+		git(t, dir, "add", "-A")
+		git(t, dir, "commit", "-qm", "base")
+		git(t, dir, "switch", "-qc", "feat/ui")
+		write(t, dir, files)
+		git(t, dir, "add", "-A")
+		git(t, dir, "commit", "-qm", "change")
+		return flow(t, dir, "close", "--json")
+	}
+	notePath := "docs/handoff/" + time.Now().Format("2006-01-02") + "-feat-ui.md"
+	count := func(out, code string) int { return strings.Count(out, `"code":"`+code+`"`) }
+	if _, out := run(t, map[string]string{"src/app.css": "a{}\n", notePath: "# note\n"}); count(out, "ui-review") != 2 {
+		t.Fatalf("row 1: %s", out)
+	}
+	if _, out := run(t, map[string]string{"src/app.css": "a{}\n", notePath: "# note\nuiux-review: PASS (x)\nvisual-review: PASS (y)\n"}); count(out, "ui-review") != 0 {
+		t.Fatalf("row 2: %s", out)
+	}
+	if code, out := run(t, map[string]string{"src/app.css": "a{}\n", notePath: "# note\nuiux-review: PASS\nvisual-review: FAIL (clipped menu)\n"}); count(out, "ui-review") != 1 || code == 0 {
+		t.Fatalf("row 3: %d %s", code, out)
+	}
+	if _, out := run(t, map[string]string{"src/cart.go": "package cart\n", notePath: "# note\n"}); count(out, "ui-review") != 0 {
+		t.Fatalf("row 4: %s", out)
+	}
 }

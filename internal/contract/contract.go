@@ -85,6 +85,9 @@ type Contract struct {
 	// Land is the project's own land command, run from the main checkout
 	// with {branch} filled in. Without it, changes land through Merge.
 	Land string `json:"land,omitempty"`
+	// UI names the paths whose change owes a UI review (module ui-review);
+	// empty means the usual front-end files.
+	UI []string `json:"ui,omitempty"`
 
 	digest string
 }
@@ -277,6 +280,12 @@ func (c *Contract) validate() error {
 		if !knownModules[m] {
 			return fmt.Errorf("modules: %q is unknown (handoff, changelog, decisions, books, ui-review)", m)
 		}
+	}
+	if c.HasModule("ui-review") && !c.HasModule("handoff") {
+		return errors.New("modules: ui-review records its verdict in the handoff note, so it needs handoff too")
+	}
+	if err := globs("ui", c.UI); err != nil {
+		return err
 	}
 	if c.NoteMaxLines < 0 {
 		return errors.New("noteMaxLines must be positive")
