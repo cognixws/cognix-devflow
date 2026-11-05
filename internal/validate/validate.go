@@ -143,8 +143,8 @@ func rules(c *contract.Contract, changed, written []string) []Finding {
 
 func note(in Input, changed []string) []Finding {
 	c := in.Contract
-	if in.Branch == "" {
-		return nil
+	if in.Branch == "" || len(changed) == 0 {
+		return nil // nothing to record yet
 	}
 	slug := Slug(in.Branch)
 	dir := strings.TrimSuffix(c.Docs.Notes, "/")
