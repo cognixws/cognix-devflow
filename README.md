@@ -9,10 +9,36 @@ The engine never calls `go`, `npm` or `pytest` on its own: your project says
 which commands are its checks and which paths make each one run. Everything
 else is the same for every repository.
 
-Status: **F1** — the `flow` engine (this repository). The COGNIX[WS]
-extension (agent tools for the eight agent CLIs, the Dev flow workspace
-page, git protection, merges) follows. Design: ADR-0401 in the COGNIX[WS]
-repository.
+Status: **0.1** — the `flow` engine and the COGNIX[WS] extension's agent
+side (tools for the eight agent CLIs, craft skills, the background process).
+The Dev flow workspace page, git protection and merges follow. Design:
+ADR-0401 in the COGNIX[WS] repository.
+
+## In COGNIX[WS]
+
+Install from Extensions (this repository's URL), turn it on in a workspace,
+and choose **Dev flow** in an agent's tools. The agent gets these tools —
+each answer ends with the next step:
+
+| Tool | Does |
+|---|---|
+| `status` | Branch, ahead/behind, uncommitted files, the checks this change needs, what is owed, the next step |
+| `check` | The checks this change needs, or `full=true`; waits up to 40 s, else returns a run id |
+| `close` | Checks (reusing passes), the project's rules, what is owed; `strict=true` before landing |
+| `land` | The project's own land command (contract `land`); otherwise the person merges in Merge |
+| `wait` | Keep waiting for a run that answered "still running" |
+| `debt` | Add a debt to a topic file, or mark one paid |
+| `adr` | Seed a decision record with the next free number |
+| `guide` | A craft guide's text, for CLIs that load no skills at launch |
+
+Skills (`quality-gate`, `handoff-note`, `decision-record`, `decision-table`)
+ride the launch on the CLIs that take them; nothing is written to your
+repository. Long runs happen in the extension's background process
+(`flow serve`), one per checkout at a time, two at once; results stay in the
+extension's data folder.
+
+The package carries prebuilt engines for Linux and macOS (`bin/`);
+elsewhere `bin/flow.sh` builds one with Go on first use.
 
 ## Install
 
@@ -65,6 +91,7 @@ Add a section to `.picode.json` at the root of your repository:
 | `modules` | `handoff`, `changelog`, `decisions`, `books`, `ui-review` |
 | `noteMaxLines` | Default 25 |
 | `quarantine` | A file of test names (one per line) whose failures do not fail a check |
+| `land` | The project's own land command, run from the main checkout with `{branch}` filled in; without it, changes land through Merge |
 
 Patterns are relative to the repository root; `**` matches any number of
 folders and `*` never crosses a `/`: `*.md` is a root file, `**/*.md` any.
@@ -81,6 +108,10 @@ flow check    [--full] [--only n] [--fresh]  run the checks this change needs
 flow close    [--strict] [--json]            checks, process rules, summary; --strict fails on owed documents
 flow validate [--json]                       process rules only
 flow scope    [--contract f] [--batch]       the checks a list of paths (stdin) selects
+flow debt     --topic t [--pay] <text>       add or pay a debt
+flow adr      [--title t] <name>             seed a decision record
+flow guide    [topic]                        a craft guide
+flow land                                    the project's own land command
 ```
 
 Exit codes: `0` passed, `1` a check or a rule failed (or close refused),

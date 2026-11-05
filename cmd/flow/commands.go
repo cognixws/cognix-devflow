@@ -68,13 +68,13 @@ func nextStep(s *session, fs []validate.Finding) string {
 	case s.branch == "" || s.branch == s.c.Main:
 		return fmt.Sprintf("start a branch in a worktree of its own (%s<name>); never commit on %s", s.c.BranchPrefix, s.c.Main)
 	case len(s.dirty) > 0:
-		return "commit your work in explicit paths (never git add -A); flow check runs the checks it needs"
+		return "commit your work in explicit paths (never git add -A); check runs the checks it needs"
 	case s.ahead == 0:
 		return "nothing to land yet: make the change and commit it"
 	case countLevel(fs, validate.Fail) > 0:
-		return "fix the failures above, commit, then flow close"
+		return "fix the failures above, commit, then close"
 	default:
-		return "flow close; then write what it lists as owed and land"
+		return "close the change; then write what it lists as owed, commit, and land"
 	}
 }
 

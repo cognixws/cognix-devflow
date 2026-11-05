@@ -22,6 +22,13 @@ const usage = `flow — the Dev flow engine
   flow validate [--json]                 the process rules only
   flow scope    [--contract file] [--batch] < paths
                                          the checks a list of paths selects
+  flow debt     --topic t [--pay [--note n]] <text>
+                                         add a debt to a topic file, or mark one paid
+  flow adr      [--title t] <name>       seed a decision record with the next free number
+  flow guide    [topic]                  print a craft guide (quality-gate, handoff-note, …)
+  flow land     [--json]                 run the project's own land command (contract "land")
+  flow serve    [--port p] [--data d]    the background process COGNIX[WS] runs
+  flow tools-exec                        one agent tool call (picode-tools/1 on stdin)
   flow version
 
 The project's contract is extensions.picode-devflow in .picode.json.
@@ -53,6 +60,18 @@ func runMain(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		err = cmdValidate(args[1:], stdout)
 	case "scope":
 		err = cmdScope(args[1:], stdin, stdout)
+	case "debt":
+		err = cmdDebt(args[1:], stdout)
+	case "adr":
+		err = cmdADR(args[1:], stdout)
+	case "guide":
+		err = cmdGuide(args[1:], stdout)
+	case "land":
+		err = cmdLand(args[1:], stdout)
+	case "serve":
+		err = cmdServe(args[1:], stdout)
+	case "tools-exec":
+		err = cmdToolsExec(stdin, stdout)
 	case "version", "--version":
 		fmt.Fprintln(stdout, "flow", version)
 	case "help", "-h", "--help":

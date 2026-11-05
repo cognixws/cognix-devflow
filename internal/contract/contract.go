@@ -82,6 +82,9 @@ type Contract struct {
 	BranchPrefix string           `json:"branchPrefix,omitempty"`
 	NoteMaxLines int              `json:"noteMaxLines,omitempty"`
 	Quarantine   string           `json:"quarantine,omitempty"`
+	// Land is the project's own land command, run from the main checkout
+	// with {branch} filled in. Without it, changes land through Merge.
+	Land string `json:"land,omitempty"`
 
 	digest string
 }
@@ -231,6 +234,9 @@ func (c *Contract) validate() error {
 		if err := globs("checks."+name+".when", ch.When); err != nil {
 			return err
 		}
+	}
+	if c.Land != "" && (!oneLine(c.Land) || !strings.Contains(c.Land, "{branch}")) {
+		return errors.New("land must be one line naming {branch}")
 	}
 	if c.Full != "" && !oneLine(c.Full) {
 		return errors.New("full must be one line")
