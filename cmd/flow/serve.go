@@ -35,6 +35,7 @@ type Run struct {
 	WorkDir   string          `json:"workDir"`
 	Branch    string          `json:"branch,omitempty"`
 	Agent     string          `json:"agent,omitempty"`
+	Workspace string          `json:"workspace,omitempty"`
 	Args      []string        `json:"args"`
 	State     string          `json:"state"` // running | done | interrupted
 	ExitCode  int             `json:"exitCode"`
@@ -156,10 +157,11 @@ func (s *server) auth(h http.HandlerFunc) http.HandlerFunc {
 }
 
 type startReq struct {
-	WorkDir string   `json:"workDir"`
-	Kind    string   `json:"kind"`
-	Args    []string `json:"args"`
-	Agent   string   `json:"agent,omitempty"` // the agent that asked, for a land through the core
+	WorkDir   string   `json:"workDir"`
+	Kind      string   `json:"kind"`
+	Args      []string `json:"args"`
+	Agent     string   `json:"agent,omitempty"` // the agent that asked, for a land through the core
+	Workspace string   `json:"workspace,omitempty"`
 }
 
 func (s *server) start(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +189,7 @@ func (s *server) start(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	id := time.Now().UTC().Format("20060102T150405") + "-" + randHex(3)
-	run := &Run{ID: id, Kind: req.Kind, WorkDir: req.WorkDir, Branch: branchOf(req.WorkDir), Args: append([]string{}, req.Args...), Agent: req.Agent, State: "running", StartedAt: time.Now().UTC()}
+	run := &Run{ID: id, Kind: req.Kind, WorkDir: req.WorkDir, Branch: branchOf(req.WorkDir), Args: append([]string{}, req.Args...), Agent: req.Agent, Workspace: req.Workspace, State: "running", StartedAt: time.Now().UTC()}
 	s.runs[id] = run
 	done := make(chan struct{})
 	s.done[id] = done
@@ -206,6 +208,9 @@ func (s *server) execute(run *Run, done chan struct{}) {
 	cmd.Env = os.Environ()
 	if run.Agent != "" {
 		cmd.Env = append(cmd.Env, "FLOW_AGENT="+run.Agent)
+	}
+	if run.Workspace != "" {
+		cmd.Env = append(cmd.Env, "FLOW_WORKSPACE="+run.Workspace)
 	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr

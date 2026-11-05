@@ -84,7 +84,7 @@ func cmdToolsExec(stdin io.Reader, stdout io.Writer) error {
 		}
 		return writeTool(stdout, viaProcess(req.Context.DataDir, "close", dir, args))
 	case "land":
-		return writeTool(stdout, viaProcessAs(req.Context.DataDir, "land", dir, nil, req.Context.Agent))
+		return writeTool(stdout, viaProcessAs(req.Context.DataDir, "land", dir, nil, req.Context.Agent, req.Context.Workspace))
 	case "wait":
 		return writeTool(stdout, waitRun(req.Context.DataDir, str("run")))
 	case "debt":
@@ -167,15 +167,15 @@ func call(info serveInfo, method, path string, body any) (*Run, error) {
 }
 
 func viaProcess(dataDir, kind, dir string, args []string) toolResult {
-	return viaProcessAs(dataDir, kind, dir, args, "")
+	return viaProcessAs(dataDir, kind, dir, args, "", "")
 }
 
-func viaProcessAs(dataDir, kind, dir string, args []string, agent string) toolResult {
+func viaProcessAs(dataDir, kind, dir string, args []string, agent, workspace string) toolResult {
 	info, err := readServe(dataDir)
 	if err != nil {
 		return processDown(kind)
 	}
-	run, err := call(info, "POST", "/runs", startReq{WorkDir: dir, Kind: kind, Args: args, Agent: agent})
+	run, err := call(info, "POST", "/runs", startReq{WorkDir: dir, Kind: kind, Args: args, Agent: agent, Workspace: workspace})
 	if err != nil {
 		return processDown(kind)
 	}

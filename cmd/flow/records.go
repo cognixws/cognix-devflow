@@ -14,9 +14,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cognixws/picode-devflow/internal/contract"
 	"github.com/cognixws/picode-devflow/internal/docsops"
 	"github.com/cognixws/picode-devflow/internal/gitx"
 	"github.com/cognixws/picode-devflow/internal/hostapi"
+	"github.com/cognixws/picode-devflow/internal/scope"
 	"github.com/cognixws/picode-devflow/skills"
 )
 
@@ -123,11 +125,18 @@ func cmdLand(args []string, w io.Writer) error {
 		out.Next = "land a change's branch, not " + or(s.branch, "a detached HEAD")
 	case len(s.dirty) > 0:
 		out.Next = "commit or discard the uncommitted paths first"
-	case s.c.Land == "":
-		return landThroughMerge(w, *asJSON, out)
 	}
 	if out.Next != "" {
 		return emitLand(w, *asJSON, out, 1)
+	}
+	// ADR-0401 F4d: the checks that decide the land are the target's — a
+	// branch that changes its own checks does not decide its own merge.
+	if msg, tail := gateOnTarget(s); msg != "" {
+		out.Next, out.Tail = msg, tail
+		return emitLand(w, *asJSON, out, 1)
+	}
+	if s.c.Land == "" {
+		return landThroughMerge(w, *asJSON, out)
 	}
 	root, err := mainCheckout(s.repo)
 	if err != nil {
@@ -222,4 +231,61 @@ func landThroughMerge(w io.Writer, asJSON bool, out landOut) error {
 		out.Next = "still merging after 50 minutes; the Merge tab shows where it is"
 	}
 	return emitLand(w, asJSON, out, 1)
+}
+
+// targetContract is the contract as it stands on the target branch. Inside
+// COGNIX[WS] it is read through the Host API, which hands the section only
+// when the person trusted those bytes; elsewhere from git. A target with no
+// contract yet (this branch brings it) gates on the branch's own.
+func targetContract(s *session) (*contract.Contract, string, error) {
+	branchOwn := "this branch's contract (" + s.c.Main + " has none yet)"
+	if host, ws := hostapi.FromEnv(), os.Getenv("FLOW_WORKSPACE"); host != nil && ws != "" {
+		p, err := host.Project(ws, s.c.Main)
+		switch {
+		case err != nil:
+			return nil, "", fmt.Errorf("the contract on %s could not be read from COGNIX[WS]: %v", s.c.Main, err)
+		case !p.Found:
+			return s.c, branchOwn, nil
+		case !p.Trusted:
+			return nil, "", fmt.Errorf("the Dev flow contract on %s is not trusted yet: the person reviews .picode.json in the workspace's Settings › Scripts, then land again", s.c.Main)
+		case len(p.Section) == 0 || string(p.Section) == "null":
+			return s.c, branchOwn, nil
+		}
+		c, err := contract.Parse(p.Section)
+		if err != nil {
+			return nil, "", fmt.Errorf("the contract on %s does not parse: %v", s.c.Main, err)
+		}
+		return c, "the contract on " + s.c.Main, nil
+	}
+	b, err := s.repo.Git("show", s.mainRev+":"+contract.File)
+	if err != nil {
+		return s.c, branchOwn, nil
+	}
+	c, err := contract.FromProjectFile([]byte(b))
+	if errors.Is(err, contract.ErrNoContract) {
+		return s.c, branchOwn, nil
+	}
+	if err != nil {
+		return nil, "", fmt.Errorf("the contract on %s does not parse: %v", s.c.Main, err)
+	}
+	return c, "the contract on " + s.c.Main, nil
+}
+
+// gateOnTarget runs the checks the target's contract selects for this
+// change (a green run of the same content is reused). It answers why the
+// land must stop, or "".
+func gateOnTarget(s *session) (string, string) {
+	tc, src, err := targetContract(s)
+	if err != nil {
+		return err.Error(), ""
+	}
+	gate := *s
+	gate.c = tc
+	gate.selected = scope.Select(tc, s.changed)
+	for _, r := range gate.runChecks(gate.selected.Checks, true, s.changed) {
+		if !r.OK && r.Skipped == "" {
+			return "check " + r.Name + " failed under " + src + "; fix it, close again and land", r.Tail
+		}
+	}
+	return "", ""
 }

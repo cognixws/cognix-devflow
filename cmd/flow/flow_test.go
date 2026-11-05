@@ -154,3 +154,67 @@ func TestScopeBatch(t *testing.T) {
 		t.Fatalf("%d %s", code, out.String())
 	}
 }
+
+// Decision table (ADR-0401 F4d): land gates on the target's contract.
+//
+//	# | contract on main        | branch's contract           | branch's change       | outcome
+//	1 | strict unit check       | drops the unit check        | breaks src            | refused: unit failed under the contract on main; land command never runs
+//	2 | strict unit check       | same                        | sound                 | land command runs
+//	3 | none                    | brings one                  | sound                 | gates on the branch's own; land command runs
+//	4 | does not parse          | sound                       | sound                 | refused, names main's contract
+func TestLandGatesOnTheTargetContract(t *testing.T) {
+	landing := func(c string) string {
+		return strings.Replace(c, `"modules":["handoff"]`, `"modules":[],"land":"echo landed {branch} >> lands.log"`, 1)
+	}
+	setup := func(t *testing.T, mainFile string) string {
+		dir := t.TempDir()
+		git(t, dir, "init", "-q", "-b", "main")
+		files := map[string]string{"README.md": "r\n", ".gitignore": "runs.log\nlands.log\n"}
+		if mainFile != "" {
+			files[".picode.json"] = mainFile
+		}
+		write(t, dir, files)
+		git(t, dir, "add", "-A")
+		git(t, dir, "commit", "-qm", "base")
+		git(t, dir, "switch", "-qc", "feat/x")
+		return dir
+	}
+	landed := func(dir string) bool { _, err := os.Stat(filepath.Join(dir, "lands.log")); return err == nil }
+	commit := func(t *testing.T, dir string, files map[string]string) {
+		write(t, dir, files)
+		git(t, dir, "add", "-A")
+		git(t, dir, "commit", "-qm", "change")
+	}
+	strict := strings.Replace(landing(contractFile), `"full":"echo full >> runs.log"`, `"full":"test ! -f src/fail"`, 1)
+	weak := strings.Replace(strings.Replace(strict, `"unit":{"run":"echo unit >> runs.log; test ! -f src/fail","when":["src/**"]},`, ``, 1), `"full":"test ! -f src/fail"`, `"full":"true"`, 1)
+
+	t.Run("1 a branch that drops its check", func(t *testing.T) {
+		dir := setup(t, strict)
+		commit(t, dir, map[string]string{".picode.json": weak, "src/fail": "x"})
+		code, out := flow(t, dir, "land")
+		if code == 0 || !strings.Contains(out, "failed under the contract on main") || landed(dir) {
+			t.Fatalf("%d %s", code, out)
+		}
+	})
+	t.Run("2 a sound change lands", func(t *testing.T) {
+		dir := setup(t, strict)
+		commit(t, dir, map[string]string{"src/ok.go": "package ok\n"})
+		if code, out := flow(t, dir, "land"); code != 0 || !landed(dir) {
+			t.Fatalf("%d %s", code, out)
+		}
+	})
+	t.Run("3 the branch brings the first contract", func(t *testing.T) {
+		dir := setup(t, "")
+		commit(t, dir, map[string]string{".picode.json": strict, "src/ok.go": "package ok\n"})
+		if code, out := flow(t, dir, "land"); code != 0 || !landed(dir) {
+			t.Fatalf("%d %s", code, out)
+		}
+	})
+	t.Run("4 main's contract does not parse", func(t *testing.T) {
+		dir := setup(t, `{"extensions":{"picode-devflow":{"flow":1,"nope":true}}}`)
+		commit(t, dir, map[string]string{".picode.json": strict, "src/ok.go": "package ok\n"})
+		if code, out := flow(t, dir, "land"); code == 0 || !strings.Contains(out, "contract on main does not parse") || landed(dir) {
+			t.Fatalf("%d %s", code, out)
+		}
+	})
+}

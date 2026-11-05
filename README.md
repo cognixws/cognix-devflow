@@ -27,7 +27,7 @@ each answer ends with the next step:
 | `status` | Branch, ahead/behind, uncommitted files, the checks this change needs, what is owed, the next step |
 | `check` | The checks this change needs, or `full=true`; waits up to 40 s, else returns a run id |
 | `close` | Checks (reusing passes), the project's rules, what is owed; `strict=true` before landing |
-| `land` | The project's own land command (contract `land`); otherwise the person merges in Merge |
+| `land` | First runs the checks the contract **on the target branch** selects (inside COGNIX[WS], only a contract the person trusted counts), then the project's own land command (contract `land`) or COGNIX[WS]'s Merge where the workspace lets agents merge; otherwise the person merges in Merge |
 | `wait` | Keep waiting for a run that answered "still running" |
 | `debt` | Add a debt to a topic file, or mark one paid |
 | `adr` | Seed a decision record with the next free number |
