@@ -1,0 +1,16 @@
+{
+  "extensions": {
+    "picode-devflow": {
+      "flow": 1,
+      "checks": {
+        "go": { "run": "gofmt -l . | (! grep .) && go vet ./... && go test ./...", "when": ["**/*.go", "go.mod", "testdata/**"] },
+        "replay": { "run": "test -d \"${PICODE_REPO:-$HOME/picode}\" && go build -o /tmp/flow-replay ./cmd/flow && scripts/replay-picode.sh \"${PICODE_REPO:-$HOME/picode}\" 300 /tmp/flow-replay", "only": "full" }
+      },
+      "everything": [".picode.json", ".github/**"],
+      "rules": [
+        { "when": ["internal/contract/**"], "need": ["README.md"], "why": "The contract's fields are documented in the README" }
+      ],
+      "modules": []
+    }
+  }
+}

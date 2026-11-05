@@ -1,0 +1,23 @@
+{
+  "flow": 1,
+  "checks": {
+    "go": {
+      "run": "make fmt-check vet && scripts/go-test.sh {affected}",
+      "when": ["cmd/**", "internal/**", "**/*.go", "web/shared/tokens/theme.css", "design/cognix-ws/**"]
+    },
+    "web": { "run": "make web", "when": ["web/**"] },
+    "js": {
+      "run": "make test-js",
+      "when": ["web/**", "packages/**", ".pi/**", "internal/pitools/**", "internal/mcptool/**", "scripts/**/*.mjs", "scripts/**/*.js", "scripts/**/*.ts", "docs/books/playbooks/tool-context/**/*.py"]
+    },
+    "docs": {
+      "run": "make ci-docs vale",
+      "when": ["docs-site/**", "styles/**", ".vale.ini", "scripts/docs-*.mjs", "scripts/lib/uitree.mjs", "scripts/lib/docs-*.mjs", "scripts/shots/**"]
+    },
+    "desktop": { "run": "make desktop-test", "when": ["desktop-shell/**"] },
+    "meta": { "run": "make hooks-check docs-living", "when": ["docs/**", "*.md"] }
+  },
+  "full": "make ci",
+  "everything": ["go.mod", "go.sum", "Makefile", ".github/**", ".githooks/**", "scripts/ci-scope.mjs", "scripts/ci-scoped.sh", "scripts/hooks-*"],
+  "modules": ["handoff", "changelog", "decisions", "books"]
+}
