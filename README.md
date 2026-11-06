@@ -32,6 +32,7 @@ each answer ends with the next step:
 | `debt` | Add a debt to a topic file, or mark one paid |
 | `adr` | Seed a decision record with the next free number |
 | `guide` | A craft guide's text, for CLIs that load no skills at launch |
+| `agents` | The Dev flow block in `AGENTS.md`: missing, older, current or edited by hand; `write` puts the current one in place, never over a person's edit without `force` |
 
 Skills (`quality-gate`, `handoff-note`, `decision-record`, `decision-table`)
 ride the launch on the CLIs that take them; nothing is written to your
@@ -91,7 +92,7 @@ Add a section to `.picode.json` at the root of your repository:
 | `main` | The branch changes land on (default `main`) |
 | `checks.<name>.run` | One shell line, run at the repository root |
 | `checks.<name>.when` | Path patterns that make the check run; none means every change |
-| `checks.<name>.affected` | Optional command reading changed paths on stdin; its output replaces `{affected}` in `run` |
+| `checks.<name>.affected` | Optional command reading changed paths on stdin; its output replaces `{affected}` in `run`. `@go-importers` is built in: the changed Go packages and every package of the module that imports them (tests included); nothing resolved leaves `{affected}` empty |
 | `checks.<name>.junit` | Optional JUnit XML report (glob): failing tests are named, a test that passes on the retry is recorded as flaky |
 | `checks.<name>.only` | `"full"`: runs only with the full gate |
 | `checks.<name>.timeoutMin` | Default 45 |
@@ -125,6 +126,7 @@ flow scope    [--contract f] [--batch]       the checks a list of paths (stdin) 
 flow debt     --topic t [--pay] <text>       add or pay a debt
 flow adr      [--title t] <name>             seed a decision record
 flow guide    [topic]                        a craft guide
+flow agents   [--write [--force]] [--json]   the Dev flow block in AGENTS.md
 flow land                                    the project's own land command
 ```
 

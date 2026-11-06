@@ -1,7 +1,7 @@
 {
   "id": "picode-devflow",
   "name": "Dev flow",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "apiVersion": 20,
   "publisher": "COGNIX[WS]",
   "description": "The development flow for any stack: one worktree per agent, the checks each change needs, a close that lists what is still owed, handoff notes, debts and decision records. Your project binds it to its own commands in .picode.json.",
@@ -151,6 +151,24 @@
               "required": [
                 "name"
               ],
+              "additionalProperties": false
+            }
+          },
+          {
+            "id": "agents",
+            "description": "The Dev flow block in AGENTS.md, the lines every agent CLI reads about how work flows here: says whether it is missing, older, current or edited by hand, and with write=true puts the current one in place (a block a person edited stays unless force=true). It writes the file; you commit it on your branch.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "write": {
+                  "type": "boolean",
+                  "description": "Put the current block in place."
+                },
+                "force": {
+                  "type": "boolean",
+                  "description": "With write: replace a block a person edited."
+                }
+              },
               "additionalProperties": false
             }
           },

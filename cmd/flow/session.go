@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cognixws/picode-devflow/internal/agentsmd"
 	"github.com/cognixws/picode-devflow/internal/contract"
 	"github.com/cognixws/picode-devflow/internal/gitx"
+	"github.com/cognixws/picode-devflow/internal/goaffected"
 	"github.com/cognixws/picode-devflow/internal/reuse"
 	"github.com/cognixws/picode-devflow/internal/runner"
 	"github.com/cognixws/picode-devflow/internal/scope"
@@ -164,13 +166,21 @@ func (s *session) runChecks(names []string, allowReuse bool, changed []string) [
 }
 
 // expand fills {affected} with the output of the check's affected command,
-// which reads the changed paths on stdin.
+// which reads the changed paths on stdin; "@go-importers" instead answers
+// the changed Go packages and every package of the module importing them.
 func (s *session) expand(ch contract.Check, changed []string) (string, error) {
 	if !strings.Contains(ch.Run, "{affected}") {
 		return ch.Run, nil
 	}
 	if ch.Affected == "" {
 		return strings.ReplaceAll(ch.Run, "{affected}", ""), nil
+	}
+	if ch.Affected == goaffected.Keyword {
+		pkgs, err := goaffected.Packages(s.repo.Root, changed)
+		if err != nil {
+			return "", fmt.Errorf("affected packages: %w", err)
+		}
+		return strings.ReplaceAll(ch.Run, "{affected}", strings.Join(pkgs, " ")), nil
 	}
 	cmd := exec.Command("/bin/sh", "-c", ch.Affected)
 	cmd.Dir = s.repo.Root
@@ -205,6 +215,9 @@ func (s *session) findings(withGenerated bool) ([]validate.Finding, error) {
 	if st, herr := readHooks(s.repo); herr == nil && st.Reset {
 		fs = append(fs, validate.Finding{Level: validate.Warn, Code: "hooks-reset", Message: "Git protection was turned on in this clone, but core.hooksPath now points elsewhere", Fix: "run `flow hooks on` again, or turn it on from the Dev flow page"})
 	}
+	if f, ok := agentsFinding(s.repo.Root); ok {
+		fs = append(fs, f)
+	}
 	return fs, nil
 }
 
@@ -229,4 +242,27 @@ func sortedFindings(fs []validate.Finding) []validate.Finding {
 	rank := map[string]int{validate.Fail: 0, validate.Owed: 1, validate.Warn: 2}
 	sort.SliceStable(fs, func(i, j int) bool { return rank[fs[i].Level] < rank[fs[j].Level] })
 	return fs
+}
+
+// agentsFinding says, never refusing, when AGENTS.md lacks the Dev flow
+// block, holds an older one, or holds one a person edited.
+func agentsFinding(root string) (validate.Finding, bool) {
+	b, err := os.ReadFile(filepath.Join(root, agentsmd.File))
+	if err != nil && !os.IsNotExist(err) {
+		return validate.Finding{}, false
+	}
+	f := validate.Finding{Level: validate.Warn, Code: "agents-md"}
+	switch agentsmd.Inspect(string(b)).State {
+	case agentsmd.Missing:
+		f.Message, f.Fix = "AGENTS.md has no Dev flow block, so agent CLIs don't read how work flows here", "call the agents tool with write=true (flow agents --write), then commit AGENTS.md"
+	case agentsmd.Older:
+		f.Message, f.Fix = "AGENTS.md holds an older Dev flow block", "call the agents tool with write=true (flow agents --write) to replace it, then commit AGENTS.md"
+	case agentsmd.Edited:
+		f.Message, f.Fix = "The Dev flow block in AGENTS.md was edited by hand, so the flow won't replace it", "keep it and mark it yours (begin marker `custom`), or replace it with write=true and force=true"
+	case agentsmd.Broken:
+		f.Message, f.Fix = "The Dev flow block markers in AGENTS.md are broken", "leave one begin and one end marker"
+	default:
+		return f, false
+	}
+	return f, true
 }

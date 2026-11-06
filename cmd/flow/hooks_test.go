@@ -29,6 +29,7 @@ func gitE(t *testing.T, dir string, env []string, args ...string) (string, error
 //	6 | changelog module on      | CHANGELOG.md staged             | refused
 //	7 | off                      | —                               | previous core.hooksPath restored
 //	8 | on, then a tool resets   | core.hooksPath                  | check reports it (exit 1)
+//	9 | on again after a reset   | the tool wrote a new path       | protection on; the tool's hooks chain from the new path
 func TestGitProtection(t *testing.T) {
 	exe, _ := os.Executable()
 	hooks := t.TempDir()
@@ -118,5 +119,26 @@ func TestGitProtection(t *testing.T) {
 	}
 	if _, err := gitE(t, dir, nil, "config", "--get", prevKey); err == nil {
 		t.Fatal("row 7: the remembered path stays behind")
+	}
+
+	// Row 9: protection on, then a tool moves core.hooksPath to a new
+	// folder; turning it on again chains the hooks from the new folder.
+	flow(t, dir, "hooks", "on")
+	write(t, dir, map[string]string{".hooks2/pre-commit": "#!/bin/sh\necho two >> \"$(git rev-parse --show-toplevel)/two.log\"\n"})
+	os.Chmod(filepath.Join(dir, ".hooks2/pre-commit"), 0o755)
+	git(t, dir, "config", "core.hooksPath", ".hooks2")
+	if code, out := flow(t, dir, "hooks", "on"); code != 0 || !strings.Contains(out, "is on") {
+		t.Fatalf("row 9 on: %d %s", code, out)
+	}
+	if got := git(t, dir, "config", prevKey); got != ".hooks2" {
+		t.Fatalf("row 9: remembered %q", got)
+	}
+	write(t, dir, map[string]string{"docs/z.md": "z\n"})
+	git(t, dir, "add", "docs/z.md")
+	if out, err := gitE(t, dir, nil, "commit", "-qm", "docs again"); err != nil {
+		t.Fatalf("row 9 commit: %v %s", err, out)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "two.log")); !strings.Contains(string(b), "two") {
+		t.Fatal("row 9: the tool's hook from its new folder did not run")
 	}
 }

@@ -89,7 +89,10 @@ func cmdHooks(args []string, w io.Writer) error {
 	switch verb {
 	case "on":
 		if !st.On {
-			if _, has := configHas(r, prevKey); !has {
+			// First time: remember the project's path. After a reset (husky's
+			// prepare on npm install), the path the tool wrote is the one its
+			// hooks live in now: remember that one, so they keep running.
+			if _, has := configHas(r, prevKey); !has || st.Reset {
 				if _, err := r.Git("config", prevKey, st.Path); err != nil {
 					return err
 				}

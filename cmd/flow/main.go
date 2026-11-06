@@ -28,6 +28,8 @@ const usage = `flow — the Dev flow engine
   flow guide    [topic]                  print a craft guide (quality-gate, handoff-note, …)
   flow land     [--json]                 run the project's own land command (contract "land")
   flow hooks    on|off|check [--json]   git protection in this clone (core.hooksPath)
+  flow agents   [--write [--force]] [--json]
+                                         the Dev flow block in AGENTS.md: report, or put the current one in place
   flow serve    [--port p] [--data d]    the background process COGNIX[WS] runs
   flow tools-exec                        one agent tool call (picode-tools/1 on stdin)
   flow version
@@ -75,6 +77,8 @@ func runMain(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		err = cmdToolsExec(stdin, stdout)
 	case "hooks":
 		err = cmdHooks(args[1:], stdout)
+	case "agents":
+		err = cmdAgents(args[1:], stdout)
 	case "hook":
 		err = cmdHook(args[1:], stdin, stderr)
 	case "version", "--version":

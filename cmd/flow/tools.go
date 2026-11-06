@@ -101,6 +101,19 @@ func cmdToolsExec(stdin io.Reader, stdout io.Writer) error {
 		}
 		args = append(args, str("name"))
 		return writeTool(stdout, local(func(w io.Writer) error { return cmdADR(args, w) }, nil))
+	case "agents":
+		args := []string{}
+		if boolean("write") {
+			args = append(args, "--write")
+		}
+		if boolean("force") {
+			args = append(args, "--force")
+		}
+		var structured func(io.Writer) error
+		if len(args) == 0 { // a write runs once: no second run for the JSON
+			structured = func(w io.Writer) error { return cmdAgents([]string{"--json"}, w) }
+		}
+		return writeTool(stdout, local(func(w io.Writer) error { return cmdAgents(args, w) }, structured))
 	case "guide":
 		return writeTool(stdout, local(func(w io.Writer) error { return cmdGuide([]string{str("topic")}, w) }, nil))
 	}

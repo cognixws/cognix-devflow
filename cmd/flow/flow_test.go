@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/cognixws/picode-devflow/internal/agentsmd"
 )
 
 func git(t *testing.T, dir string, args ...string) string {
@@ -43,8 +45,8 @@ const contractFile = `{"setup":[],"extensions":{"picode-devflow":{"flow":1,
 func repo(t *testing.T) string {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	write(t, dir, map[string]string{".picode.json": contractFile, "README.md": "r\n", ".gitignore": "runs.log\n"})
-	git(t, dir, "add", ".picode.json", "README.md", ".gitignore")
+	write(t, dir, map[string]string{".picode.json": contractFile, "README.md": "r\n", ".gitignore": "runs.log\n", "AGENTS.md": "# Agents\n\n" + agentsmd.Block()})
+	git(t, dir, "add", ".picode.json", "README.md", ".gitignore", "AGENTS.md")
 	git(t, dir, "commit", "-qm", "base")
 	return dir
 }
@@ -255,5 +257,78 @@ func TestUIReviewModule(t *testing.T) {
 	}
 	if _, out := run(t, map[string]string{"src/cart.go": "package cart\n", notePath: "# note\n"}); count(out, "ui-review") != 0 {
 		t.Fatalf("row 4: %s", out)
+	}
+}
+
+func TestGoImportersFillsAffected(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	write(t, dir, map[string]string{
+		".picode.json": `{"extensions":{"picode-devflow":{"flow":1,
+ "checks":{"go":{"run":"P='{affected}'; echo \"${P:-./...}\" > pkgs.log","when":["**/*.go"],"affected":"@go-importers"}}}}}`,
+		".gitignore": "pkgs.log\n",
+		"go.mod":     "module example.com/m\n\ngo 1.22\n",
+		"a/a.go":     "package a\n",
+		"b/b.go":     "package b\n\nimport _ \"example.com/m/a\"\n",
+		"c/c.go":     "package c\n",
+	})
+	git(t, dir, "add", ".")
+	git(t, dir, "commit", "-qm", "base")
+	git(t, dir, "switch", "-qc", "feat/a")
+	write(t, dir, map[string]string{"a/a.go": "package a\n\nconst X = 1\n"})
+	if code, out := flow(t, dir, "check", "--fresh"); code != 0 {
+		t.Fatalf("check: %d %s", code, out)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "pkgs.log"))
+	if got := strings.TrimSpace(string(b)); got != "example.com/m/a example.com/m/b" {
+		t.Fatalf("affected = %q", got)
+	}
+}
+
+// The agents command and the status warning, end to end.
+func TestAgentsBlock(t *testing.T) {
+	dir := repo(t)
+	git(t, dir, "switch", "-qc", "feat/agents")
+	hasWarn := func() bool {
+		_, out := flow(t, dir, "status", "--json")
+		var st statusOut
+		json.Unmarshal([]byte(out), &st)
+		for _, f := range st.Findings {
+			if f.Code == "agents-md" {
+				return f.Level == "warn"
+			}
+		}
+		return false
+	}
+	if hasWarn() {
+		t.Fatal("the current block warns")
+	}
+	// An older v1 block, as the setup wrote it: status warns, write replaces.
+	v1 := "<!-- picode-devflow:begin v1 -->\n## How work flows here (Dev flow)\n\n- One worktree per agent; never commit on the main branch in the main checkout.\n- While you work, the Dev flow check tool runs the checks your change needs.\n- At the end, call close and do what it lists as owed; then land.\n- Stage explicit paths, never `git add -A`; never merge by hand.\n- A change that crosses a boundary (protocol, persistence, security model, process) gets a decision record (adr tool).\n- Debts go to docs/handoff/open/<topic>.md with the debt tool; pay them by marking, never by deleting.\n<!-- picode-devflow:end -->\n"
+	write(t, dir, map[string]string{"AGENTS.md": "# Agents\n\n" + v1 + "\nTail.\n"})
+	if !hasWarn() {
+		t.Fatal("an older block must warn")
+	}
+	if code, out := flow(t, dir, "agents", "--write"); code != 0 || !strings.Contains(out, "Wrote") {
+		t.Fatalf("write: %d %s", code, out)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if string(b) != "# Agents\n\n"+agentsmd.Block()+"\nTail.\n" {
+		t.Fatalf("replaced:\n%s", b)
+	}
+	// Edited by hand: reported, never overwritten without force.
+	edited := strings.Replace(string(b), "never merge by hand", "merge on Fridays", 1)
+	write(t, dir, map[string]string{"AGENTS.md": edited})
+	if code, out := flow(t, dir, "agents", "--write"); code != 1 || !strings.Contains(out, "edited by hand") {
+		t.Fatalf("edited: %d %s", code, out)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md")); string(b) != edited {
+		t.Fatal("an edited block was overwritten")
+	}
+	if code, _ := flow(t, dir, "agents", "--write", "--force"); code != 0 {
+		t.Fatal("force must replace")
+	}
+	if hasWarn() {
+		t.Fatal("still warns after force")
 	}
 }

@@ -70,21 +70,23 @@ error and name the checks your diff needs.
 
 ## 4. Add the block to AGENTS.md
 
-Append this block to `AGENTS.md` at the root (create the file if needed),
-exactly as written:
+Call the Dev flow **agents** tool with `write=true` (outside COGNIX[WS]:
+`flow agents --write`). It appends the Dev flow block to `AGENTS.md` at the
+root (creating the file if needed), between markers that carry the block's
+version and a hash of its text:
 
 ```markdown
-<!-- picode-devflow:begin v1 -->
+<!-- picode-devflow:begin v2 sha256=… -->
 ## How work flows here (Dev flow)
-
-- One worktree per agent; never commit on the main branch in the main checkout.
-- While you work, the Dev flow check tool runs the checks your change needs.
-- At the end, call close and do what it lists as owed; then land.
-- Stage explicit paths, never `git add -A`; never merge by hand.
-- A change that crosses a boundary (protocol, persistence, security model, process) gets a decision record (adr tool).
-- Debts go to docs/handoff/open/<topic>.md with the debt tool; pay them by marking, never by deleting.
+…
 <!-- picode-devflow:end -->
 ```
+
+Never write or edit the block by hand. Later Dev flows say when the block is
+older (status warns) and replace it on `write`; a block a person edited is
+never replaced without `force`. A project that keeps words of its own marks
+its block `<!-- picode-devflow:begin custom -->`, and the flow leaves it
+alone.
 
 ## 5. Commit and stop
 
