@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/scope"
-	"github.com/cognixws/picode-devflow/internal/validate"
+	"github.com/cognixws/cognix-devflow/internal/scope"
+	"github.com/cognixws/cognix-devflow/internal/validate"
 )
 
 type statusOut struct {

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/contract"
 )
 
 func age(n int64) *int64 { return &n }

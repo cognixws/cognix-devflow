@@ -56,7 +56,7 @@ elsewhere `bin/flow.sh` builds one with Go on first use.
 ## Install
 
 ```sh
-go install github.com/cognixws/picode-devflow/cmd/flow@latest
+go install github.com/cognixws/cognix-devflow/cmd/flow@latest
 ```
 
 ## The contract

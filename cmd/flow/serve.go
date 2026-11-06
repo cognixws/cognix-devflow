@@ -24,7 +24,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/hostapi"
+	"github.com/cognixws/cognix-devflow/internal/hostapi"
 )
 
 // Run is one long command the background process ran for an agent or a

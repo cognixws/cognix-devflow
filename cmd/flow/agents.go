@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cognixws/picode-devflow/internal/agentsmd"
-	"github.com/cognixws/picode-devflow/internal/gitx"
+	"github.com/cognixws/cognix-devflow/internal/agentsmd"
+	"github.com/cognixws/cognix-devflow/internal/gitx"
 )
 
 type agentsOut struct {

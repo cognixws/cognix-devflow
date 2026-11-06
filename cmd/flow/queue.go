@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
-	"github.com/cognixws/picode-devflow/internal/hostapi"
+	"github.com/cognixws/cognix-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/hostapi"
 )
 
 // The Queue tab (ADR-0401 amendment, 2026-11-06): the project's own land

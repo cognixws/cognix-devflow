@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
-	"github.com/cognixws/picode-devflow/internal/gitx"
+	"github.com/cognixws/cognix-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/gitx"
 )
 
 var topicName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)

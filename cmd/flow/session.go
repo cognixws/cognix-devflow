@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/agentsmd"
-	"github.com/cognixws/picode-devflow/internal/contract"
-	"github.com/cognixws/picode-devflow/internal/gitx"
-	"github.com/cognixws/picode-devflow/internal/goaffected"
-	"github.com/cognixws/picode-devflow/internal/reuse"
-	"github.com/cognixws/picode-devflow/internal/runner"
-	"github.com/cognixws/picode-devflow/internal/scope"
-	"github.com/cognixws/picode-devflow/internal/validate"
+	"github.com/cognixws/cognix-devflow/internal/agentsmd"
+	"github.com/cognixws/cognix-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/gitx"
+	"github.com/cognixws/cognix-devflow/internal/goaffected"
+	"github.com/cognixws/cognix-devflow/internal/reuse"
+	"github.com/cognixws/cognix-devflow/internal/runner"
+	"github.com/cognixws/cognix-devflow/internal/scope"
+	"github.com/cognixws/cognix-devflow/internal/validate"
 )
 
 // session is one checkout with its contract and its change against main.

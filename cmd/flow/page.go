@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
-	"github.com/cognixws/picode-devflow/internal/gitx"
-	"github.com/cognixws/picode-devflow/internal/hostapi"
+	"github.com/cognixws/cognix-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/gitx"
+	"github.com/cognixws/cognix-devflow/internal/hostapi"
 )
 
 // The Dev flow page (door D) reads through the daemon's relay, which signs

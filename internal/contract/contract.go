@@ -17,7 +17,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cognixws/picode-devflow/internal/glob"
+	"github.com/cognixws/cognix-devflow/internal/glob"
 )
 
 // ID is the extension id the section is keyed by.

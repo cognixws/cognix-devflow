@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/contract"
 )
 
 func mustParse(t *testing.T, s string) *contract.Contract {

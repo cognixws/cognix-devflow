@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cognixws/picode-devflow/internal/glob"
+	"github.com/cognixws/cognix-devflow/internal/glob"
 )
 
 // Repo is a checkout: the main one or a worktree.

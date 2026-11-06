@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
-	"github.com/cognixws/picode-devflow/internal/gitx"
-	"github.com/cognixws/picode-devflow/internal/glob"
+	"github.com/cognixws/cognix-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/gitx"
+	"github.com/cognixws/cognix-devflow/internal/glob"
 )
 
 // Git protection (ADR-0401 D6): per clone, outside the repository. `flow

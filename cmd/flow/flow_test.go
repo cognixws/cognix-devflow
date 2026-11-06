@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/agentsmd"
+	"github.com/cognixws/cognix-devflow/internal/agentsmd"
 )
 
 func git(t *testing.T, dir string, args ...string) string {

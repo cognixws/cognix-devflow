@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
-	"github.com/cognixws/picode-devflow/internal/docsops"
-	"github.com/cognixws/picode-devflow/internal/gitx"
-	"github.com/cognixws/picode-devflow/internal/hostapi"
-	"github.com/cognixws/picode-devflow/internal/scope"
-	"github.com/cognixws/picode-devflow/skills"
+	"github.com/cognixws/cognix-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/docsops"
+	"github.com/cognixws/cognix-devflow/internal/gitx"
+	"github.com/cognixws/cognix-devflow/internal/hostapi"
+	"github.com/cognixws/cognix-devflow/internal/scope"
+	"github.com/cognixws/cognix-devflow/skills"
 )
 
 func cmdDebt(args []string, w io.Writer) error {

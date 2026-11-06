@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
-	"github.com/cognixws/picode-devflow/internal/gitx"
+	"github.com/cognixws/cognix-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/gitx"
 )
 
 func c(t *testing.T) *contract.Contract {

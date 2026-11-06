@@ -10,8 +10,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cognixws/picode-devflow/internal/contract"
-	"github.com/cognixws/picode-devflow/internal/scope"
+	"github.com/cognixws/cognix-devflow/internal/contract"
+	"github.com/cognixws/cognix-devflow/internal/scope"
 )
 
 // cmdScope prints the selection for a list of paths read from stdin (one per
