@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -263,5 +264,37 @@ func TestQueueFromMerge(t *testing.T) {
 	s.page(s.pageQueueChange)(rec, req)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("Merge's queue is read only here: %d", rec.Code)
+	}
+}
+
+// Decision table: which verdicts the Queue tab keeps.
+func TestPickVerdicts(t *testing.T) {
+	run := func(id, ended string) queueRun { return queueRun{ID: id, Kind: "check", Ended: ended} }
+	merge := func(id, ended string) queueRun { return queueRun{ID: id, Kind: "merge", Ended: ended} }
+	var tenRuns []queueRun
+	for i := 0; i < 10; i++ {
+		tenRuns = append(tenRuns, run(fmt.Sprintf("r%d", i), fmt.Sprintf("2026-11-06T12:%02d:00Z", 30+i)))
+	}
+	rows := []struct {
+		name   string
+		runs   []queueRun
+		merges []queueRun
+		want   string
+	}{
+		{"few: all, newest first", []queueRun{run("r1", "2026-11-06T10:00:00Z")}, []queueRun{merge("m1", "2026-11-06T11:00:00Z")}, "m1 r1"},
+		{"many checks, old merges: the floor keeps three", tenRuns, []queueRun{merge("m1", "2026-11-06T09:00:00Z"), merge("m2", "2026-11-06T08:00:00Z"), merge("m3", "2026-11-06T07:00:00Z"), merge("m4", "2026-11-06T06:00:00Z")}, "r9 r8 r7 r6 r5 m1 m2 m3"},
+		{"one old merge: kept", tenRuns, []queueRun{merge("m1", "2026-11-06T09:00:00Z")}, "r9 r8 r7 r6 r5 r4 r3 m1"},
+		{"newest merges beat the floor", tenRuns[:2], []queueRun{merge("m1", "2026-11-06T13:00:00Z"), merge("m2", "2026-11-06T13:01:00Z"), merge("m3", "2026-11-06T13:02:00Z"), merge("m4", "2026-11-06T13:03:00Z"), merge("m5", "2026-11-06T13:04:00Z"), merge("m6", "2026-11-06T13:05:00Z"), merge("m7", "2026-11-06T13:06:00Z")}, "m7 m6 m5 m4 m3 m2 m1 r1"},
+		{"no merges: newest eight runs", tenRuns, nil, "r9 r8 r7 r6 r5 r4 r3 r2"},
+		{"a running row sorts by its start", []queueRun{{ID: "x", Kind: "check", Started: "2026-11-06T14:00:00Z"}}, []queueRun{merge("m1", "2026-11-06T13:00:00Z")}, "x m1"},
+	}
+	for _, r := range rows {
+		var got []string
+		for _, q := range pickVerdicts(r.runs, r.merges, verdictRoom, mergeVerdictFloor) {
+			got = append(got, q.ID)
+		}
+		if strings.Join(got, " ") != r.want {
+			t.Errorf("%s: got %v, want %s", r.name, got, r.want)
+		}
 	}
 }

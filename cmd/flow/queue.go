@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -317,12 +318,54 @@ func (s *server) pageQueue(w http.ResponseWriter, r *http.Request, ws pageWorksp
 			st := checkState(run)
 			q.Is, q.Text = st.Is, st.Text
 		}
-		if len(out.Verdicts) < 8 {
-			out.Verdicts = append(out.Verdicts, q)
-		}
+		out.Verdicts = append(out.Verdicts, q)
 	}
-	out.Verdicts = append(out.Verdicts, mergeVerdicts(mergeEnded, 8-len(out.Verdicts))...)
+	out.Verdicts = pickVerdicts(out.Verdicts, mergeVerdicts(mergeEnded, verdictRoom), verdictRoom, mergeVerdictFloor)
 	writeJSON(w, out)
+}
+
+// verdictRoom is how many verdicts the Queue tab shows; mergeVerdictFloor of
+// them stay for the Merge's own when it has that many, so a run of checks
+// never pushes the land outcomes out of the tab.
+const (
+	verdictRoom       = 8
+	mergeVerdictFloor = 3
+)
+
+// pickVerdicts merges the Dev flow's runs and the Merge's verdicts, newest
+// end first (a run with no end sorts by its start), keeps at most room, and
+// keeps at least floor of the Merge's (or all of them, when fewer).
+func pickVerdicts(runs, merges []queueRun, room, floor int) []queueRun {
+	at := func(q queueRun) string {
+		if q.Ended != "" {
+			return q.Ended
+		}
+		return q.Started
+	}
+	all := append(append([]queueRun{}, runs...), merges...)
+	sort.SliceStable(all, func(i, j int) bool { return at(all[i]) > at(all[j]) })
+	if len(all) <= room {
+		return all
+	}
+	// Newest first; a non-Merge verdict is skipped once the slots left are
+	// the ones the Merge's floor still needs.
+	want := min(floor, len(merges), room)
+	picked := []queueRun{}
+	merge := 0
+	for _, q := range all {
+		left := room - len(picked)
+		if left == 0 {
+			break
+		}
+		if q.Kind != "merge" && left <= want-merge {
+			continue
+		}
+		if q.Kind == "merge" {
+			merge++
+		}
+		picked = append(picked, q)
+	}
+	return picked
 }
 
 // pageQueueChange moves or stops one ticket through the contract.
