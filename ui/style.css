@@ -57,6 +57,7 @@ button.primary{background:var(--pc-accent-fill);border-color:var(--pc-accent-fil
 .run .when{white-space:nowrap}
 
 .tile{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--pc-border);border-radius:var(--pc-radius);background:var(--pc-panel);color:var(--pc-text-muted)}
+.tile.warn{background:color-mix(in srgb,var(--pc-warn) 10%,var(--pc-panel));border-color:color-mix(in srgb,var(--pc-warn) 45%,var(--pc-border));color:var(--pc-text)}
 .tile+h2{margin-top:14px}
 .summary+.tile{margin-top:8px}
 .empty{text-align:center;padding:48px 16px}

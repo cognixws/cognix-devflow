@@ -158,7 +158,9 @@
     const h = d.hooks;
     const guard = !h ? "" : h.on
       ? `<div class="tile"><span>The branch <span class="mono">${esc(d.main)}</span> is protected here: agents can't commit to it or rewrite its history.</span><button type="button" data-act="hooks-off">Turn off protection</button></div>`
-      : `<div class="tile"><span>${h.reset ? "Another tool (often Husky, on npm install) switched off protection of " + esc(d.main) + ". Agents can commit straight to it again." : "Agents can still commit straight to " + esc(d.main) + " in this project."}</span><button type="button" data-act="hooks-on">${h.reset ? "Turn it on again" : "Protect " + esc(d.main)}</button></div>`;
+      : h.reset
+        ? `<div class="tile warn"><span>Another tool (often Husky, when packages install) switched off protection of <span class="mono">${esc(d.main)}</span>. Agents can commit straight to it again.</span><button type="button" class="primary" data-act="hooks-on">Turn it on again</button></div>`
+        : `<div class="tile"><span>Agents can still commit straight to <span class="mono">${esc(d.main)}</span> in this project.</span><button type="button" data-act="hooks-on">Protect ${esc(d.main)}</button></div>`;
     return `${head}${guard}<h2>In flight</h2>${table}
       <div class="cols2"><div><h2>Next up</h2><ul class="list">${topics}</ul></div><div><h2>Recent notes</h2><ul class="list">${notes}</ul></div></div>`;
   }
