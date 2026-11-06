@@ -58,6 +58,11 @@ Add (or extend) `.picode.json` at the repository root:
   gate is every check.
 - `everything`: lock files, the build file, `.picode.json` itself.
 - Add `rules` only for what the project's own docs already demand.
+- Add `land` only when the project already lands with a command of its own,
+  and `queue` only when that command keeps a queue it can list as JSON
+  (`list`, plus `move` and `drop` if it can change one ticket): the person
+  then sees and orders it in the Queue tab. Never write a queue script for
+  the project.
 - Keep the file's other keys (`setup`, `run`, `teardown`) as they are.
 
 Call the Dev flow **status** tool: it must read the contract without an

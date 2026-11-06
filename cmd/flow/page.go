@@ -155,6 +155,7 @@ type rowOut struct {
 	Path        string `json:"path"`
 	Branch      string `json:"branch"`
 	Agent       string `json:"agent,omitempty"`
+	AgentID     string `json:"agentId,omitempty"`
 	AgentCLI    string `json:"agentCli,omitempty"`
 	Ahead       int    `json:"ahead"`
 	Behind      int    `json:"behind"`
@@ -191,6 +192,7 @@ type boardOut struct {
 	Main     string      `json:"main"`
 	Checks   int         `json:"checks"`
 	Full     string      `json:"full,omitempty"`
+	Land     string      `json:"land,omitempty"`
 	InFlight []rowOut    `json:"inFlight"`
 	Topics   []topicOut  `json:"topics"`
 	Notes    []noteOut   `json:"notes"`
@@ -203,7 +205,7 @@ func (s *server) pageBoard(w http.ResponseWriter, r *http.Request, ws pageWorksp
 		return
 	}
 	c := out.Contract
-	out.Main, out.Checks, out.Full = c.Main, len(c.Checks), c.Full
+	out.Main, out.Checks, out.Full, out.Land = c.Main, len(c.Checks), c.Full, c.Land
 	agents, _ := ws.host.Agents(ws.ID)
 	trees := worktrees(ws.Path)
 	runs := s.runsByDir()
@@ -235,6 +237,22 @@ func (s *server) pageBoard(w http.ResponseWriter, r *http.Request, ws pageWorksp
 			out.Hooks = &st
 		}
 	}
+	// A branch waiting in the project's queue says where it stands.
+	if q, err := readQueue(c, main); err == nil && len(q) > 0 {
+		at := map[string]int{}
+		for i, r := range q {
+			at[r.Branch] = i
+		}
+		for i, row := range out.InFlight {
+			if k, ok := at[row.Branch]; ok && row.Land.Is != "landing" {
+				if q[k].State == "landing" {
+					out.InFlight[i].Land = state{Is: "landing", Text: "Landing"}
+				} else {
+					out.InFlight[i].Land = state{Is: "running", Text: "In queue · " + ordinal(k+1)}
+				}
+			}
+		}
+	}
 	out.Topics = topics(filepath.Join(main, c.Docs.Topics))
 	out.Notes = notes(filepath.Join(main, c.Docs.Notes))
 	writeJSON(w, out)
@@ -253,7 +271,7 @@ func (s *server) row(t worktree, mainRef string, agents []hostapi.Agent, runs []
 	row.Stalled = row.Ahead > 0 && row.LastCommit > 0 && time.Since(time.Unix(row.LastCommit, 0)) > 14*24*time.Hour
 	for _, a := range agents {
 		if a.WorkDir != "" && filepath.Clean(a.WorkDir) == filepath.Clean(t.Path) {
-			row.Agent, row.AgentCLI = a.Name, a.CLI
+			row.Agent, row.AgentID, row.AgentCLI = a.Name, a.ID, a.CLI
 			break
 		}
 	}
@@ -284,7 +302,7 @@ func (s *server) row(t worktree, mainRef string, agents []hostapi.Agent, runs []
 
 func checkState(run *Run) state {
 	if run.State == "running" {
-		return state{Is: "running", Text: "Running " + run.Kind + "…"}
+		return state{Is: "running", Text: map[string]string{"check": "Running checks", "close": "Closing"}[run.Kind]}
 	}
 	var res struct {
 		Checks []checkOut `json:"checks"`
@@ -301,7 +319,7 @@ func checkState(run *Run) state {
 	case n == 0 && run.ExitCode == 0:
 		return state{Is: "none", Text: "Nothing to check"}
 	case len(failed) > 0:
-		return state{Is: "failed", Text: strings.Join(failed, ", ") + " failed"}
+		return state{Is: "failed", Text: "Failed · " + strings.Join(failed, ", ")}
 	case run.ExitCode != 0 && run.Kind == "check":
 		return state{Is: "failed", Text: "Failed"}
 	}
@@ -658,4 +676,18 @@ func (s *server) pageHooks(w http.ResponseWriter, r *http.Request, ws pageWorksp
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(out)
+}
+
+func ordinal(n int) string {
+	suf := "th"
+	switch {
+	case n%100 >= 11 && n%100 <= 13:
+	case n%10 == 1:
+		suf = "st"
+	case n%10 == 2:
+		suf = "nd"
+	case n%10 == 3:
+		suf = "rd"
+	}
+	return strconv.Itoa(n) + suf
 }

@@ -106,6 +106,9 @@ func cmdServe(args []string, stdout io.Writer) error {
 	mux.HandleFunc("GET /page/checks", s.page(s.pageChecks))
 	mux.HandleFunc("GET /page/activity", s.page(s.pageActivity))
 	mux.HandleFunc("POST /page/hooks", s.page(s.pageHooks))
+	mux.HandleFunc("GET /page/queue", s.page(s.pageQueue))
+	mux.HandleFunc("POST /page/queue", s.page(s.pageQueueChange))
+	mux.HandleFunc("POST /page/run", s.page(s.pageRun))
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -180,12 +183,17 @@ func (s *server) start(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "workDir is not a folder", http.StatusBadRequest)
 		return
 	}
+	writeJSON(w, s.startRun(req))
+}
+
+// startRun starts a run, or answers the same one already running in that
+// folder with the same kind and flags.
+func (s *server) startRun(req startReq) *Run {
 	s.mu.Lock()
 	for _, x := range s.runs {
 		if x.State == "running" && x.WorkDir == req.WorkDir && x.Kind == req.Kind && strings.Join(x.Args, " ") == strings.Join(req.Args, " ") {
 			s.mu.Unlock()
-			writeJSON(w, x)
-			return
+			return x
 		}
 	}
 	id := time.Now().UTC().Format("20060102T150405") + "-" + randHex(3)
@@ -197,7 +205,7 @@ func (s *server) start(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 	s.announce(run)
 	go s.execute(run, done)
-	writeJSON(w, run)
+	return run
 }
 
 func (s *server) execute(run *Run, done chan struct{}) {

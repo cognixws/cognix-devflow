@@ -39,6 +39,16 @@ repository. Long runs happen in the extension's background process
 (`flow serve`), one per checkout at a time, two at once; results stay in the
 extension's data folder.
 
+The **Dev flow page** in the workspace has four tabs. **Board**: the
+branches in flight, with a ⋯ menu per branch to run its checks, close it,
+land it or open its agent. **Queue**: what runs now, the land queue in
+order (move a waiting ticket earlier, later or first, or stop it; nothing
+passes the ticket holding the target) and the recent verdicts. **Checks**
+and **Activity**. The same queue is a **Queue** tab of the bottom dock. A
+project without `land` lands through COGNIX[WS]'s Merge, and the tab shows
+that queue read only (ordered and stopped on the Merge cards); a project with
+`land` but no `queue` shows only the Dev flow's own runs.
+
 The package carries prebuilt engines for Linux and macOS (`bin/`);
 elsewhere `bin/flow.sh` builds one with Go on first use.
 
@@ -95,6 +105,7 @@ Add a section to `.picode.json` at the root of your repository:
 | `noteMaxLines` | Default 25 |
 | `quarantine` | A file of test names (one per line) whose failures do not fail a check |
 | `land` | The project's own land command, run from the main checkout with `{branch}` filled in; without it, changes land through Merge |
+| `queue` | The project's own land queue, for the person: `list` prints `{"tickets":[{"ticket","branch","state","ageSeconds"}]}` in order; `move` (with `{ticket}` and `{move}`, which becomes `--front`, `--before <ticket>` or `--after <ticket>`) and `drop` (with `{ticket}`) change one ticket; `red` names a file whose presence means the target's own checks failed and the queue waits. Commands run from the main checkout |
 
 Patterns are relative to the repository root; `**` matches any number of
 folders and `*` never crosses a `/`: `*.md` is a root file, `**/*.md` any.

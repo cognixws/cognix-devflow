@@ -198,3 +198,28 @@ func (c *Client) MergeState(agentID, entryID string) (MergeEntry, error) {
 	err := c.get("/api/ext/v1/merge?agentId="+url.QueryEscape(agentID)+"&entry="+url.QueryEscape(entryID), &out)
 	return out.Entry, err
 }
+
+// QueueEntry is one entry of a workspace's Merge queue.
+type QueueEntry struct {
+	ID          string `json:"id"`
+	Branch      string `json:"branch"`
+	Target      string `json:"target"`
+	State       string `json:"state"`
+	Note        string `json:"note"`
+	RequestedBy string `json:"requestedBy"`
+	CreatedAt   string `json:"createdAt"`
+	StartedAt   string `json:"startedAt"`
+	UpdatedAt   string `json:"updatedAt"`
+}
+
+// MergeQueue reads the Merge queue of a workspace's repository
+// (merge:request): the waiting and running entries in order, and the
+// newest that ended.
+func (c *Client) MergeQueue(workspace string) (active, ended []QueueEntry, err error) {
+	var out struct {
+		Entries []QueueEntry `json:"entries"`
+		Ended   []QueueEntry `json:"ended"`
+	}
+	err = c.get("/api/ext/v1/merge/queue?workspace="+url.QueryEscape(workspace), &out)
+	return out.Entries, out.Ended, err
+}

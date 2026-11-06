@@ -88,8 +88,23 @@ type Contract struct {
 	// UI names the paths whose change owes a UI review (module ui-review);
 	// empty means the usual front-end files.
 	UI []string `json:"ui,omitempty"`
+	// Queue is how the person sees and orders the project's own land queue
+	// (the one Land feeds): absent, the Dev flow shows its own lands only.
+	Queue *Queue `json:"queue,omitempty"`
 
 	digest string
+}
+
+// Queue binds the project's land queue: List prints it in order, Move and
+// Drop change one ticket. Commands run from the main checkout through
+// /bin/sh; {ticket} is a ticket List printed, {move} becomes --front,
+// --before <ticket> or --after <ticket>. Red names a file whose presence
+// means the target's own checks failed and the queue waits.
+type Queue struct {
+	List string `json:"list"`
+	Move string `json:"move,omitempty"`
+	Drop string `json:"drop,omitempty"`
+	Red  string `json:"red,omitempty"`
 }
 
 // Modules the engine knows.
@@ -240,6 +255,20 @@ func (c *Contract) validate() error {
 	}
 	if c.Land != "" && (!oneLine(c.Land) || !strings.Contains(c.Land, "{branch}")) {
 		return errors.New("land must be one line naming {branch}")
+	}
+	if q := c.Queue; q != nil {
+		if !oneLine(q.List) {
+			return errors.New("queue.list must be one non-empty line")
+		}
+		if q.Move != "" && (!oneLine(q.Move) || !strings.Contains(q.Move, "{ticket}") || !strings.Contains(q.Move, "{move}")) {
+			return errors.New("queue.move must be one line naming {ticket} and {move}")
+		}
+		if q.Drop != "" && (!oneLine(q.Drop) || !strings.Contains(q.Drop, "{ticket}")) {
+			return errors.New("queue.drop must be one line naming {ticket}")
+		}
+		if q.Red != "" && (!oneLine(q.Red) || filepath.IsAbs(q.Red) || strings.Contains(q.Red, "..")) {
+			return errors.New("queue.red must be a path relative to the repository")
+		}
 	}
 	if c.Full != "" && !oneLine(c.Full) {
 		return errors.New("full must be one line")
