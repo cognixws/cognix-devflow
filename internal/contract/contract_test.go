@@ -93,3 +93,19 @@ func TestFailureLayerCheckBecomesACheck(t *testing.T) {
 		t.Fatal("a layer without check became a check")
 	}
 }
+
+func TestFromProjectFileReadsTheFormerKey(t *testing.T) {
+	min := `{"flow":1,"checks":{"t":{"run":"true"}}}`
+	for _, c := range []struct {
+		name, file string
+		want       error
+	}{
+		{"new key", `{"extensions":{"devflow":` + min + `}}`, nil},
+		{"former key", `{"extensions":{"picode-devflow":` + min + `}}`, nil},
+		{"neither", `{"extensions":{"other":{}}}`, ErrNoContract},
+	} {
+		if _, err := FromProjectFile([]byte(c.file)); err != c.want {
+			t.Errorf("%s: err = %v, want %v", c.name, err, c.want)
+		}
+	}
+}

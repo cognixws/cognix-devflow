@@ -1,5 +1,5 @@
 // Package contract reads the project's binding of the Dev flow verbs to its
-// stack: the "extensions" → "picode-devflow" section of .picode.json
+// stack: the "extensions" → "devflow" section of .picode.json
 // (ADR-0401 in the COGNIX[WS] repository). Unknown fields are refused, never
 // ignored: a typo in a gate must not silently drop the gate.
 package contract
@@ -21,13 +21,19 @@ import (
 )
 
 // ID is the extension id the section is keyed by.
-const ID = "picode-devflow"
+const ID = "devflow"
+
+// Formerly is the id the section was keyed by before 0.9.0. The host
+// rewrites the workspace's own .picode.json when it moves the extension to
+// ID, but a branch or a target ref committed before that still carries the
+// old key; it is read only when the file has no section under ID.
+const Formerly = "picode-devflow"
 
 // File is the project file that carries the section.
 const File = ".picode.json"
 
 // ErrNoContract means the project declares no Dev flow section.
-var ErrNoContract = errors.New("this project has no Dev flow contract: add extensions.picode-devflow to .picode.json")
+var ErrNoContract = errors.New("this project has no Dev flow contract: add extensions.devflow to .picode.json")
 
 // Check is one named command and the paths that make it run.
 type Check struct {
@@ -164,7 +170,9 @@ func FromProjectFile(b []byte) (*Contract, error) {
 	}
 	sec, ok := exts[ID]
 	if !ok {
-		return nil, ErrNoContract
+		if sec, ok = exts[Formerly]; !ok {
+			return nil, ErrNoContract
+		}
 	}
 	return Parse(sec)
 }

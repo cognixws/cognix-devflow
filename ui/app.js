@@ -108,7 +108,7 @@
       case "untrusted":
         return empty("Review this project's checks", "This project's .picode.json changed since it was trusted, so the Dev flow shows nothing until you review it.", ws ? "Review" : "", "review");
       case "invalid":
-        return empty("The Dev flow settings need a fix", d.message || "The extensions.picode-devflow section of .picode.json could not be read.", ws ? "Open settings" : "", "review");
+        return empty("The Dev flow settings need a fix", d.message || "The extensions.devflow section of .picode.json could not be read.", ws ? "Open settings" : "", "review");
       case "not-git":
         return empty("This folder is not a git repository", "The Dev flow follows branches, worktrees and merges, so it needs git.", "", "");
     }
@@ -310,7 +310,7 @@
           .catch(() => { error = on ? "Couldn't protect it. Try again." : "Couldn't turn protection off. Try again."; render(); });
         break;
       }
-      case "ext": links?.open(location.origin + "/#/extensions/picode-devflow"); break;
+      case "ext": links?.open(location.origin + "/#/extensions/devflow"); break;
     }
     if (w) live.textContent = "";
   });

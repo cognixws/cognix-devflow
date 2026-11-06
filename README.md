@@ -66,7 +66,7 @@ Add a section to `.picode.json` at the root of your repository:
 ```json
 {
   "extensions": {
-    "picode-devflow": {
+    "devflow": {
       "flow": 1,
       "checks": {
         "typecheck": { "run": "npm run typecheck", "when": ["apps/**", "packages/**"] },

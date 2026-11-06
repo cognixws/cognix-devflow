@@ -34,7 +34,7 @@ const usage = `flow — the Dev flow engine
   flow tools-exec                        one agent tool call (picode-tools/1 on stdin)
   flow version
 
-The project's contract is extensions.picode-devflow in .picode.json.
+The project's contract is extensions.devflow in .picode.json.
 `
 
 // exitError carries an exit code without printing a second message.

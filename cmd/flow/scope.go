@@ -19,7 +19,7 @@ import (
 // of paths. --contract reads a section file instead of the project's.
 func cmdScope(args []string, stdin io.Reader, stdout io.Writer) error {
 	fs := flag.NewFlagSet("scope", flag.ContinueOnError)
-	file := fs.String("contract", "", "a file holding only the extensions.picode-devflow section")
+	file := fs.String("contract", "", "a file holding only the extensions.devflow section")
 	batch := fs.Bool("batch", false, "one JSON array of paths per line in, one selection per line out")
 	if err := fs.Parse(args); err != nil {
 		return err

@@ -1,6 +1,6 @@
 {
   "extensions": {
-    "picode-devflow": {
+    "devflow": {
       "flow": 1,
       "checks": {
         "go": { "run": "gofmt -l . | (! grep .) && go vet ./... && go test ./...", "when": ["**/*.go", "go.mod", "testdata/**"] },

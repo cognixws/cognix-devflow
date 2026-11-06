@@ -1,6 +1,6 @@
 ---
 name: dev-flow-setup
-description: Set up the Dev flow in a repository — read how it builds and tests, write the extensions.picode-devflow section of .picode.json with checks the project already runs, add the Dev flow block to AGENTS.md, and commit it on a branch for the person to review.
+description: Set up the Dev flow in a repository — read how it builds and tests, write the extensions.devflow section of .picode.json with checks the project already runs, add the Dev flow block to AGENTS.md, and commit it on a branch for the person to review.
 ---
 
 # Set up the Dev flow
@@ -38,7 +38,7 @@ Add (or extend) `.picode.json` at the repository root:
 ```json
 {
   "extensions": {
-    "picode-devflow": {
+    "devflow": {
       "flow": 1,
       "checks": {
         "test": { "run": "npm test", "when": ["src/**"] }
