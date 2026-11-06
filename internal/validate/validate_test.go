@@ -149,3 +149,22 @@ func TestDiffCheckAndGenerated(t *testing.T) {
 		t.Fatalf("got %s", got)
 	}
 }
+
+func TestIsNote(t *testing.T) {
+	for _, c := range []struct {
+		p, branch string
+		want      bool
+	}{
+		{"docs/handoff/2026-11-06-feat-x.md", "feat/x", true},
+		{"docs/handoff/2026-11-06-x.md", "feat/x", true},
+		{"docs/handoff/2026-11-06-a-b.md", "feat/a/b", true},
+		{"docs/handoff/2026-11-06-x.md", "x", true},
+		{"docs/handoff/2026-11-06-y.md", "feat/x", false},
+		{"docs/handoff/open/2026-11-06-x.md", "feat/x", false},
+		{"docs/other/2026-11-06-x.md", "feat/x", false},
+	} {
+		if got := IsNote(c.p, "docs/handoff", c.branch); got != c.want {
+			t.Errorf("IsNote(%q, %q) = %v, want %v", c.p, c.branch, got, c.want)
+		}
+	}
+}

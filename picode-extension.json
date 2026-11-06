@@ -1,7 +1,7 @@
 {
   "id": "picode-devflow",
   "name": "Dev flow",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "apiVersion": 20,
   "publisher": "COGNIX[WS]",
   "description": "The development flow for any stack: one worktree per agent, the checks each change needs, a close that lists what is still owed, handoff notes, debts and decision records. Your project binds it to its own commands in .picode.json.",

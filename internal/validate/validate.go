@@ -86,6 +86,22 @@ func Run(in Input, withGenerated bool) ([]Finding, error) {
 // Slug is the branch name as it appears in file names.
 func Slug(branch string) string { return strings.ReplaceAll(branch, "/", "-") }
 
+// IsNote says whether p, a file this branch changed, is its handoff note in
+// dir: <date>-<slug>.md, or, for a branch with a kind prefix (feat/x,
+// fix/x), <date>-x.md as projects that drop the prefix name it.
+func IsNote(p, dir, branch string) bool {
+	if path.Dir(p) != dir {
+		return false
+	}
+	if strings.HasSuffix(p, "-"+Slug(branch)+".md") {
+		return true
+	}
+	if _, rest, ok := strings.Cut(branch, "/"); ok && rest != "" {
+		return strings.HasSuffix(p, "-"+Slug(rest)+".md")
+	}
+	return false
+}
+
 func writtenPaths(r *gitx.Repo, base, head string) ([]string, error) {
 	out, err := r.Git("diff", "--name-only", "--no-renames", "--diff-filter=ACMRT", base, head)
 	if err != nil {
@@ -156,7 +172,7 @@ func note(in Input, changed []string) []Finding {
 	dir := strings.TrimSuffix(c.Docs.Notes, "/")
 	var found string
 	for _, p := range changed {
-		if path.Dir(p) == dir && strings.HasSuffix(p, "-"+slug+".md") {
+		if IsNote(p, dir, in.Branch) {
 			found = p
 		}
 	}
@@ -341,10 +357,10 @@ func uiReview(in Input, changed []string) []Finding {
 	if trig == "" {
 		return nil
 	}
-	dir, slug := strings.TrimSuffix(c.Docs.Notes, "/"), Slug(in.Branch)
+	dir := strings.TrimSuffix(c.Docs.Notes, "/")
 	var body string
 	for _, p := range changed {
-		if path.Dir(p) == dir && strings.HasSuffix(p, "-"+slug+".md") {
+		if IsNote(p, dir, in.Branch) {
 			if b, err := in.Repo.Show(in.Head, p); err == nil {
 				body = string(b)
 			}
@@ -429,9 +445,9 @@ func failureReview(in Input, changed, written []string) []Finding {
 
 // noteBody is the branch's handoff note at head, or "".
 func noteBody(in Input, changed []string) string {
-	dir, slug := strings.TrimSuffix(in.Contract.Docs.Notes, "/"), Slug(in.Branch)
+	dir := strings.TrimSuffix(in.Contract.Docs.Notes, "/")
 	for _, p := range changed {
-		if path.Dir(p) == dir && strings.HasSuffix(p, "-"+slug+".md") {
+		if IsNote(p, dir, in.Branch) {
 			if b, err := in.Repo.Show(in.Head, p); err == nil {
 				return string(b)
 			}
