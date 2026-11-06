@@ -30,8 +30,12 @@
     return d;
   }
 
+  // A read that a newer one overtook drops its answer (several triggers:
+  // the timer, run events, the context, visibility).
+  let seq = 0, shownWorkspace = "";
   async function load() {
     clearTimeout(timer);
+    const mine = ++seq;
     const w = workspace();
     if (!w) {
       try {
@@ -41,10 +45,17 @@
       } catch (e) { error = e.message; }
       loading = false; root.setAttribute("aria-busy", "false"); render(); return;
     }
+    shownWorkspace = w.id;
+    const want = tab;
     try {
-      data[tab] = await request("/page/" + tab + "?workspace=" + encodeURIComponent(w.id));
+      const d = await request("/page/" + want + "?workspace=" + encodeURIComponent(w.id));
+      if (mine !== seq) return;
+      data[want] = d;
       error = "";
-    } catch (e) { error = e.message; }
+    } catch (e) {
+      if (mine !== seq) return;
+      error = e.message;
+    }
     loading = false;
     root.setAttribute("aria-busy", "false");
     render();
@@ -55,7 +66,15 @@
     timer = setTimeout(() => { if (!document.hidden) load(); else timer = setTimeout(load, every); }, every);
   }
   events?.onChange((ev) => { if (ev && /\.runs$/.test(ev.type || "")) load(); });
-  ctxDoor?.onChange(() => { data = {}; loading = true; render(); load(); });
+  // The context door also announces changes that keep the same workspace
+  // (the dock re-reads it often): only another workspace empties the page;
+  // the same one reads again with the last answer still on screen.
+  ctxDoor?.onChange(() => {
+    const id = workspace()?.id || "";
+    if (id === shownWorkspace) { load(); return; }
+    shownWorkspace = id;
+    data = {}; loading = true; render(); load();
+  });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 
   // ---- pieces ------------------------------------------------------------
