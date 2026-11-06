@@ -260,6 +260,92 @@ func TestUIReviewModule(t *testing.T) {
 	}
 }
 
+// Decision table (the contract's failure section): a change to a layer's
+// code owes a failure-review line, backed by a changed test of the layer.
+//
+//	# | changed                    | note says                         | close            | --strict
+//	1 | api code                   | nothing                           | owes the line    | refuses
+//	2 | api code + api test        | api PASS (TestDown)               | nothing owed     | passes
+//	3 | api code                   | api PASS (TestDown)               | fails (no test)  | refuses
+//	4 | api code                   | api n/a — renames a field         | nothing owed     | passes
+//	5 | api code                   | api n/a                           | owes the reason  | refuses
+//	6 | api code + api test        | api FAIL (panics escape)          | fails            | refuses
+//	7 | api code + api test        | api PASS                          | owes the test    | refuses
+//	8 | ui code only               | api PASS (TestDown)               | owes ui          | refuses
+//	9 | api test only              | nothing                           | nothing owed     | passes
+//	10| README only                | nothing                           | nothing owed     | passes
+//	11| no failure section, api    | nothing                           | nothing owed     | passes
+//	12| api code, layer check fails| api n/a — x                       | check fails      | refuses
+func TestFailureReview(t *testing.T) {
+	section := `"modules":["handoff"],
+ "failure":{"layers":[
+  {"name":"api","paths":["api/**"],"tests":["api/**/*_test.go"],"boundary":"errors become a status","check":"test ! -f api/raw"},
+  {"name":"ui","paths":["ui/**"],"tests":["ui/**/*.test.js"],"boundary":"a route renders inside its boundary"}]}`
+	with := strings.Replace(contractFile, `"modules":["handoff"]`, section, 1)
+	run := func(t *testing.T, file string, files map[string]string, strict bool) (int, string) {
+		dir := t.TempDir()
+		git(t, dir, "init", "-q", "-b", "main")
+		write(t, dir, map[string]string{".picode.json": file, "README.md": "r\n", ".gitignore": "runs.log\n"})
+		git(t, dir, "add", "-A")
+		git(t, dir, "commit", "-qm", "base")
+		git(t, dir, "switch", "-qc", "feat/fr")
+		write(t, dir, files)
+		git(t, dir, "add", "-A")
+		git(t, dir, "commit", "-qm", "change")
+		args := []string{"close", "--json"}
+		if strict {
+			args = append(args, "--strict")
+		}
+		return flow(t, dir, args...)
+	}
+	note := "docs/handoff/" + time.Now().Format("2006-01-02") + "-feat-fr.md"
+	count := func(out string) int { return strings.Count(out, `"code":"failure-review"`) }
+	code := map[string]string{"api/h.go": "package api\n"}
+	plus := func(a map[string]string, kv ...string) map[string]string {
+		m := map[string]string{}
+		for k, v := range a {
+			m[k] = v
+		}
+		for i := 0; i+1 < len(kv); i += 2 {
+			m[kv[i]] = kv[i+1]
+		}
+		return m
+	}
+	rows := []struct {
+		name   string
+		file   string
+		files  map[string]string
+		want   int  // failure-review findings
+		passes bool // close --strict exits 0
+		has    string
+	}{
+		{"1 missing", with, plus(code, note, "# n\n"), 1, false, "owes"},
+		{"2 pass with test", with, plus(code, "api/h_test.go", "package api\n", note, "# n\nfailure-review: api PASS (TestDown)\n"), 0, true, ""},
+		{"3 pass without test", with, plus(code, note, "# n\nfailure-review: api PASS (TestDown)\n"), 1, false, "no test of the api layer changed"},
+		{"4 n/a with reason", with, plus(code, note, "# n\nfailure-review: api n/a — renames a field\n"), 0, true, ""},
+		{"5 n/a without reason", with, plus(code, note, "# n\nfailure-review: api n/a\n"), 1, false, "needs its reason"},
+		{"6 fail", with, plus(code, "api/h_test.go", "package api\n", note, "# n\nfailure-review: api FAIL (panics escape)\n"), 1, false, "does not land"},
+		{"7 pass without test name", with, plus(code, "api/h_test.go", "package api\n", note, "# n\nfailure-review: api PASS\n"), 1, false, "must name the test"},
+		{"8 other layer", with, map[string]string{"ui/app.js": "x\n", note: "# n\nfailure-review: api PASS (TestDown)\n"}, 1, false, "the ui layer"},
+		{"9 test only", with, map[string]string{"api/h_test.go": "package api\n", note: "# n\n"}, 0, true, ""},
+		{"10 untouched", with, map[string]string{"README.md": "r2\n", note: "# n\n"}, 0, true, ""},
+		{"11 no section", contractFile, plus(code, note, "# n\n"), 0, true, ""},
+		{"12 layer check", with, plus(code, "api/raw", "x", note, "# n\nfailure-review: api n/a — x\n"), 0, false, "failure-api"},
+	}
+	for _, r := range rows {
+		t.Run(r.name, func(t *testing.T) {
+			_, out := run(t, r.file, r.files, false)
+			if count(out) != r.want || (r.has != "" && !strings.Contains(out, r.has)) {
+				t.Fatalf("close: %s", out)
+			}
+			sc, sout := run(t, r.file, r.files, true)
+			if (sc == 0) != r.passes {
+				t.Fatalf("close --strict exit %d: %s", sc, sout)
+			}
+		})
+	}
+}
+
 func TestGoImportersFillsAffected(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")

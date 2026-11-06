@@ -74,6 +74,9 @@ func Run(in Input, withGenerated bool) ([]Finding, error) {
 	if c.HasModule("decisions") {
 		out = append(out, decisions(in, written)...)
 	}
+	if c.Failure != nil {
+		out = append(out, failureReview(in, changed, written)...)
+	}
 	if withGenerated {
 		out = append(out, generated(in)...)
 	}
@@ -364,4 +367,75 @@ func uiReview(in Input, changed []string) []Finding {
 		}
 	}
 	return out
+}
+
+// failureLine is one "failure-review: <layer> PASS (<test>)", "FAIL (…)"
+// or "n/a — <reason>" line of the handoff note.
+var failureLine = regexp.MustCompile(`(?m)^[ \t>*-]*failure-review:[ \t]*([a-z0-9][a-z0-9-]*)[ \t]+(PASS|FAIL|n/a)\b([^\n]*)$`)
+
+// failureReview (the contract's failure section): every layer whose code
+// the change touched owes a line in the handoff note. PASS must name the
+// test and come with a changed test of that layer — the proof is a test
+// that forces the failure, not the word of whoever wrote the line; n/a
+// must say why; FAIL stops the close.
+func failureReview(in Input, changed, written []string) []Finding {
+	body := noteBody(in, changed)
+	type verdict struct{ word, rest string }
+	got := map[string]verdict{}
+	for _, m := range failureLine.FindAllStringSubmatch(body, -1) {
+		got[m[1]] = verdict{m[2], strings.TrimSpace(m[3])}
+	}
+	var out []Finding
+	for _, l := range in.Contract.Failure.Layers {
+		var trig, test string
+		for _, p := range changed {
+			if glob.Any(l.Paths, p) && !glob.Any(l.Tests, p) && trig == "" {
+				trig = p
+			}
+		}
+		if trig == "" {
+			continue
+		}
+		for _, p := range written {
+			if glob.Any(l.Tests, p) {
+				test = p
+				break
+			}
+		}
+		line := "failure-review: " + l.Name
+		v, ok := got[l.Name]
+		switch {
+		case !ok:
+			out = append(out, Finding{Level: Owed, Code: "failure-review", Message: fmt.Sprintf("%s changed the %s layer, so the handoff note owes a %q line (boundary: %s)", trig, l.Name, line+" PASS (<test>)", l.Boundary),
+				Fix: "follow the failure-review guide (flow guide failure-review): write a test that forces the failure, then the line; or \"" + line + " n/a — <why>\""})
+		case v.word == "FAIL":
+			out = append(out, Finding{Level: Fail, Code: "failure-review", Message: fmt.Sprintf("the note says %s FAIL; a layer whose failures escape its boundary does not land", line),
+				Fix: "contain the failure at the layer's boundary, test it, and write PASS"})
+		case v.word == "n/a":
+			if strings.Trim(v.rest, " \t—–-:") == "" {
+				out = append(out, Finding{Level: Owed, Code: "failure-review", Message: fmt.Sprintf("%q n/a needs its reason", line),
+					Fix: "write \"" + line + " n/a — <why this change has no failure path>\""})
+			}
+		case !strings.HasPrefix(v.rest, "(") || strings.Trim(v.rest, "() \t") == "":
+			out = append(out, Finding{Level: Owed, Code: "failure-review", Message: fmt.Sprintf("%q PASS must name the test that forces the failure", line),
+				Fix: "write \"" + line + " PASS (<the test>)\""})
+		case test == "":
+			out = append(out, Finding{Level: Fail, Code: "failure-review", Message: fmt.Sprintf("the note says %s PASS, but no test of the %s layer changed (%s); a PASS needs the test that proves it", line, l.Name, strings.Join(l.Tests, ", ")),
+				Fix: "add or change the test that forces the failure, or write n/a with the reason"})
+		}
+	}
+	return out
+}
+
+// noteBody is the branch's handoff note at head, or "".
+func noteBody(in Input, changed []string) string {
+	dir, slug := strings.TrimSuffix(in.Contract.Docs.Notes, "/"), Slug(in.Branch)
+	for _, p := range changed {
+		if path.Dir(p) == dir && strings.HasSuffix(p, "-"+slug+".md") {
+			if b, err := in.Repo.Show(in.Head, p); err == nil {
+				return string(b)
+			}
+		}
+	}
+	return ""
 }

@@ -91,9 +91,33 @@ type Contract struct {
 	// Queue is how the person sees and orders the project's own land queue
 	// (the one Land feeds): absent, the Dev flow shows its own lands only.
 	Queue *Queue `json:"queue,omitempty"`
+	// Failure declares the project's layers and the boundary each keeps
+	// (the failure-review gate): absent, nothing about it changes.
+	Failure *Failure `json:"failure,omitempty"`
 
 	digest string
 }
+
+// Failure is the failure-review gate: a change to a layer's code owes, in
+// the handoff note, a "failure-review: <layer>" line backed by a changed
+// test of that layer, or an n/a with its reason.
+type Failure struct {
+	Layers []Layer `json:"layers"`
+}
+
+// Layer is one part of the application and the boundary that contains its
+// failures. Paths are its code, Tests the files that prove the boundary,
+// Check an optional command (a ratchet) run when the layer is touched.
+type Layer struct {
+	Name     string   `json:"name"`
+	Paths    []string `json:"paths"`
+	Boundary string   `json:"boundary"`
+	Tests    []string `json:"tests"`
+	Check    string   `json:"check,omitempty"`
+}
+
+// FailureCheckPrefix names the check a layer's Check becomes.
+const FailureCheckPrefix = "failure-"
 
 // Queue binds the project's land queue: List prints it in order, Move and
 // Drop change one ticket. Commands run from the main checkout through
@@ -213,6 +237,18 @@ func (c *Contract) defaults() {
 	def(&d.Changelog, "docs/changelog.d")
 	def(&d.Decisions, "docs/decisions")
 	def(&d.Books, "docs/books")
+	// A layer's check is one more check, selected when its paths change.
+	if c.Failure != nil {
+		for _, l := range c.Failure.Layers {
+			if l.Check == "" {
+				continue
+			}
+			if c.Checks == nil {
+				c.Checks = map[string]Check{}
+			}
+			c.Checks[FailureCheckPrefix+l.Name] = Check{Run: l.Check, When: append([]string(nil), l.Paths...)}
+		}
+	}
 }
 
 func oneLine(s string) bool { return strings.TrimSpace(s) != "" && !strings.ContainsAny(s, "\r\n") }
@@ -318,6 +354,45 @@ func (c *Contract) validate() error {
 	}
 	if c.NoteMaxLines < 0 {
 		return errors.New("noteMaxLines must be positive")
+	}
+	if f := c.Failure; f != nil {
+		if !c.HasModule("handoff") {
+			return errors.New("failure: its review lines live in the handoff note, so it needs the handoff module")
+		}
+		if len(f.Layers) == 0 {
+			return errors.New("failure.layers must name at least one layer")
+		}
+		seen := map[string]bool{}
+		for i, l := range f.Layers {
+			at := fmt.Sprintf("failure.layers[%d]", i)
+			if !namePattern.MatchString(l.Name) || len(l.Name) > 32 {
+				return fmt.Errorf("%s.name: %q is not a valid name (a-z, 0-9, dashes, at most 32)", at, l.Name)
+			}
+			if seen[l.Name] {
+				return fmt.Errorf("%s.name: %q appears twice", at, l.Name)
+			}
+			seen[l.Name] = true
+			if len(l.Paths) == 0 || len(l.Tests) == 0 {
+				return fmt.Errorf("%s needs paths and tests", at)
+			}
+			if !oneLine(l.Boundary) {
+				return fmt.Errorf("%s.boundary must be one non-empty line: the boundary this layer keeps", at)
+			}
+			if err := globs(at+".paths", l.Paths); err != nil {
+				return err
+			}
+			if err := globs(at+".tests", l.Tests); err != nil {
+				return err
+			}
+			if l.Check != "" {
+				if !oneLine(l.Check) {
+					return fmt.Errorf("%s.check must be one line", at)
+				}
+				if _, clash := c.Checks[FailureCheckPrefix+l.Name]; clash {
+					return fmt.Errorf("%s.check becomes the check %q, which checks already names", at, FailureCheckPrefix+l.Name)
+				}
+			}
+		}
 	}
 	return nil
 }

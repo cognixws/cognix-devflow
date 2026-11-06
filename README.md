@@ -103,6 +103,7 @@ Add a section to `.picode.json` at the root of your repository:
 | `docs` | `notes`, `topics`, `changelog`, `decisions`, `books` folders (defaults under `docs/`) |
 | `modules` | `handoff`, `changelog`, `decisions`, `books`, `ui-review` |
 | `ui` | Paths whose change owes a UI review (module `ui-review`, which needs `handoff`); default: `.jsx`, `.tsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.html` files. The note carries `uiux-review:` and `visual-review:` lines; `FAIL` stops the close |
+| `failure` | The failure-review gate (needs `handoff`): `layers`, each with `name`, `paths` (its code), `boundary` (one line: where its failures stop), `tests` (the files that prove it) and an optional `check` (a command, best a ratchet, that runs as the check `failure-<name>` when the layer is touched). A change to a layer's code owes `failure-review: <layer> PASS (<test>)` in the note with a changed test of that layer, or `n/a — <reason>`; `FAIL` stops the close. Absent, nothing changes |
 | `noteMaxLines` | Default 25 |
 | `quarantine` | A file of test names (one per line) whose failures do not fail a check |
 | `land` | The project's own land command, run from the main checkout with `{branch}` filled in; without it, changes land through Merge |

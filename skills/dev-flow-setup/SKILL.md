@@ -63,6 +63,14 @@ Add (or extend) `.picode.json` at the repository root:
   (`list`, plus `move` and `drop` if it can change one ticket): the person
   then sees and orders it in the Queue tab. Never write a queue script for
   the project.
+- Optionally offer `failure` (the failure-review gate) when the project
+  has clear layers and already contains failures somewhere (an error
+  boundary, an error writer, a guarded background helper): one entry per
+  layer with `name`, `paths`, `tests`, and a one-line `boundary` in the
+  project's own words, e.g.
+  `{"name":"api","paths":["src/server/**"],"tests":["src/server/**/*.test.ts"],"boundary":"a handler answers a readable status; nothing throws past the error middleware"}`.
+  Ask the person before adding it: every change to a layer then owes a
+  `failure-review:` line in the note (see the failure-review guide).
 - Keep the file's other keys (`setup`, `run`, `teardown`) as they are.
 
 Call the Dev flow **status** tool: it must read the contract without an
