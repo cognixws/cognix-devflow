@@ -238,7 +238,7 @@ func TestQueueFromMerge(t *testing.T) {
 					{"id": "m3", "branch": "feat/c", "state": "needs-update", "conflict": map[string]any{"files": []string{"b.go"}, "waitsFor": "agent", "askedAgent": "a1"}, "agent": map[string]any{"id": "a1", "name": "Atlas"}},
 					{"id": "m4", "branch": "feat/d", "state": "needs-update", "conflict": map[string]any{"files": []string{"c.go"}, "waitsFor": "person"}},
 					{"id": "m5", "branch": "feat/e", "state": "needs-you", "rules": []map[string]any{{"rule": "dependencies", "reason": "Changes dependencies: go.mod"}}}},
-				"ended":   []map[string]any{{"id": "m0", "branch": "feat/z", "state": "failed", "note": "checks failed"}},
+				"ended": []map[string]any{{"id": "m0", "branch": "feat/z", "state": "failed", "note": "checks failed"}},
 			})
 		default:
 			writeJSON(w, map[string]any{"agents": []any{}})
