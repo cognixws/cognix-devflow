@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -165,6 +166,25 @@ type MergeEntry struct {
 	Note        string `json:"note"`
 	Target      string `json:"target"`
 	RequestedBy string `json:"requestedBy"`
+	// Rules and Conflict say why a change waits (ADR-0411 D5, D7): the
+	// approval rules that hold it for the person (needs-you), and a
+	// conflict with the target (needs-update).
+	Rules    []RuleVerdict  `json:"rules,omitempty"`
+	Conflict *QueueConflict `json:"conflict,omitempty"`
+}
+
+// RuleVerdict is one approval rule that holds a change, with its reason.
+type RuleVerdict struct {
+	Rule   string `json:"rule"`
+	Reason string `json:"reason"`
+}
+
+// QueueConflict is a change's conflict with its target: the files, and who
+// resolves it now — "agent" (AskedAgent was asked) or "person".
+type QueueConflict struct {
+	Files      []string `json:"files"`
+	WaitsFor   string   `json:"waitsFor,omitempty"`
+	AskedAgent string   `json:"askedAgent,omitempty"`
 }
 
 // RequestMerge asks the core to merge an agent's change (merge:request).
@@ -199,17 +219,35 @@ func (c *Client) MergeState(agentID, entryID string) (MergeEntry, error) {
 	return out.Entry, err
 }
 
-// QueueEntry is one entry of a workspace's Merge queue.
+// QueueEntry is one entry of a workspace's Merge queue, as the core's
+// Merge screen reads it (ADR-0411): its place in line, the rules that hold
+// it, a conflict, and the agent on its branch.
 type QueueEntry struct {
-	ID          string `json:"id"`
-	Branch      string `json:"branch"`
-	Target      string `json:"target"`
-	State       string `json:"state"`
-	Note        string `json:"note"`
-	RequestedBy string `json:"requestedBy"`
-	CreatedAt   string `json:"createdAt"`
-	StartedAt   string `json:"startedAt"`
-	UpdatedAt   string `json:"updatedAt"`
+	ID          string         `json:"id"`
+	Branch      string         `json:"branch"`
+	Target      string         `json:"target"`
+	State       string         `json:"state"`
+	Note        string         `json:"note"`
+	RequestedBy string         `json:"requestedBy"`
+	CreatedAt   string         `json:"createdAt"`
+	StartedAt   string         `json:"startedAt"`
+	UpdatedAt   string         `json:"updatedAt"`
+	Position    int            `json:"position,omitempty"`
+	Rules       []RuleVerdict  `json:"rules,omitempty"`
+	Conflict    *QueueConflict `json:"conflict,omitempty"`
+	Agent       *struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"agent,omitempty"`
+}
+
+// Reasons joins the rules that hold an entry, in their own words.
+func Reasons(rules []RuleVerdict) string {
+	var rs []string
+	for _, r := range rules {
+		rs = append(rs, strings.TrimSuffix(r.Reason, "."))
+	}
+	return strings.Join(rs, "; ")
 }
 
 // MergeQueue reads the Merge queue of a workspace's repository

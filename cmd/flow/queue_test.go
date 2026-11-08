@@ -234,7 +234,10 @@ func TestQueueFromMerge(t *testing.T) {
 			writeJSON(w, map[string]any{"found": true, "trusted": true, "section": json.RawMessage(`{"flow":1}`)})
 		case "/api/ext/v1/merge/queue":
 			writeJSON(w, map[string]any{
-				"entries": []map[string]any{{"id": "m1", "branch": "feat/a", "state": "running", "createdAt": time.Now().Add(-3 * time.Minute).Format(time.RFC3339Nano)}, {"id": "m2", "branch": "feat/b", "state": "waiting"}},
+				"entries": []map[string]any{{"id": "m1", "branch": "feat/a", "state": "running", "createdAt": time.Now().Add(-3 * time.Minute).Format(time.RFC3339Nano)}, {"id": "m2", "branch": "feat/b", "state": "waiting"},
+					{"id": "m3", "branch": "feat/c", "state": "needs-update", "conflict": map[string]any{"files": []string{"b.go"}, "waitsFor": "agent", "askedAgent": "a1"}, "agent": map[string]any{"id": "a1", "name": "Atlas"}},
+					{"id": "m4", "branch": "feat/d", "state": "needs-update", "conflict": map[string]any{"files": []string{"c.go"}, "waitsFor": "person"}},
+					{"id": "m5", "branch": "feat/e", "state": "needs-you", "rules": []map[string]any{{"rule": "dependencies", "reason": "Changes dependencies: go.mod"}}}},
 				"ended":   []map[string]any{{"id": "m0", "branch": "feat/z", "state": "failed", "note": "checks failed"}},
 			})
 		default:
@@ -252,8 +255,19 @@ func TestQueueFromMerge(t *testing.T) {
 	s.page(s.pageQueue)(rec, req)
 	var q queueOut
 	json.Unmarshal(rec.Body.Bytes(), &q)
-	if !q.Merge || len(q.Rows) != 2 || q.Rows[0].Text != "Landing" || q.Rows[0].Age != "3 min" || q.Rows[1].Text != "Waiting for you" || len(q.Rows[1].Actions) != 0 {
+	if !q.Merge || len(q.Rows) != 5 || q.Rows[0].Text != "Landing" || q.Rows[0].Age != "3 min" || q.Rows[1].Text != "Waiting for you" || len(q.Rows[1].Actions) != 0 {
 		t.Fatalf("rows: %+v", q)
+	}
+	// ADR-0411: a conflict names its files and who resolves it; a change a
+	// rule holds names the rule; none of them can be moved or stopped here.
+	if r := q.Rows[2]; r.Text != "Needs an update" || r.Agent != "Atlas" || r.Reason != "Conflicts in b.go; Atlas was asked to resolve it." || len(r.Actions) != 0 {
+		t.Fatalf("asked conflict: %+v", r)
+	}
+	if r := q.Rows[3]; r.Reason != "Conflicts in c.go; it waits for you in Merge." {
+		t.Fatalf("person's conflict: %+v", r)
+	}
+	if r := q.Rows[4]; r.Text != "Waits for you" || r.Reason != "Changes dependencies: go.mod. Approve it in Merge." || len(r.Actions) != 0 {
+		t.Fatalf("held: %+v", r)
 	}
 	if len(q.Verdicts) != 1 || q.Verdicts[0].Kind != "merge" || q.Verdicts[0].Is != "failed" || q.Verdicts[0].Title != "checks failed" {
 		t.Fatalf("verdicts: %+v", q.Verdicts)
@@ -295,6 +309,37 @@ func TestPickVerdicts(t *testing.T) {
 		}
 		if strings.Join(got, " ") != r.want {
 			t.Errorf("%s: got %v, want %s", r.name, got, r.want)
+		}
+	}
+}
+
+// Decision table: what land through Merge says when the change waits
+// (ADR-0411 D5, D7) — it stops waiting and names why, exit 1.
+//
+//	state        | conflict waits for | next
+//	needs-you    | —                  | waits for the person's approval: <rule reasons>
+//	needs-update | agent              | merge it into your branch … Decision block
+//	needs-update | person             | waits for the person in Merge
+func TestLandThroughMergeWaitingStates(t *testing.T) {
+	for _, tc := range []struct {
+		entry map[string]any
+		want  string
+	}{
+		{map[string]any{"id": "m1", "state": "needs-you", "target": "main", "rules": []map[string]any{{"rule": "dependencies", "reason": "Changes dependencies: go.mod"}}}, "waits for the person's approval in Merge: Changes dependencies: go.mod"},
+		{map[string]any{"id": "m1", "state": "needs-update", "target": "main", "conflict": map[string]any{"files": []string{"b"}, "waitsFor": "agent", "askedAgent": "a1"}}, "conflicts with main: merge it into your branch"},
+		{map[string]any{"id": "m1", "state": "needs-update", "target": "main", "conflict": map[string]any{"files": []string{"b"}, "waitsFor": "person"}}, "conflicts with main; it waits for the person in Merge"},
+	} {
+		host := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(w, map[string]any{"entry": tc.entry})
+		}))
+		t.Setenv("PICODE_URL", host.URL)
+		t.Setenv("PICODE_EXT_TOKEN", "tok")
+		t.Setenv("FLOW_AGENT", "a1")
+		var buf strings.Builder
+		err := landThroughMerge(&buf, false, landOut{Branch: "feat/x"})
+		host.Close()
+		if err == nil || !strings.Contains(buf.String(), tc.want) {
+			t.Fatalf("%v: err %v, out %q, want %q", tc.entry["state"], err, buf.String(), tc.want)
 		}
 	}
 }

@@ -227,6 +227,19 @@ func landThroughMerge(w io.Writer, asJSON bool, out landOut) error {
 		return emitLand(w, asJSON, out, 0)
 	case "failed":
 		out.Next = "Merge stopped: " + e.Note
+	case "needs-you":
+		// ADR-0411 D7: a rule holds it; it merges when the person approves.
+		out.Next = "waits for the person's approval in Merge"
+		if why := hostapi.Reasons(e.Rules); why != "" {
+			out.Next += ": " + why
+		}
+	case "needs-update":
+		// ADR-0411 D5: a conflict with the target; when this agent was asked
+		// it got the request as a message, and the queue reads its next commit.
+		out.Next = "conflicts with " + or(e.Target, "the target") + ": merge it into your branch, resolve, run the checks, commit with a Decision block; Merge reads the new commit on its own"
+		if e.Conflict != nil && e.Conflict.WaitsFor == "person" {
+			out.Next = "conflicts with " + or(e.Target, "the target") + "; it waits for the person in Merge"
+		}
 	default:
 		out.Next = "still merging after 50 minutes; the Merge tab shows where it is"
 	}

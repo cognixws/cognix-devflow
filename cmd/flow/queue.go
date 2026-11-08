@@ -469,11 +469,36 @@ func mergeRows(entries []hostapi.QueueEntry, target string, agentOf map[string]s
 	rows := []queueRow{}
 	for _, e := range entries {
 		r := queueRow{Ticket: e.ID, Branch: e.Branch, Agent: agentOf[e.Branch], State: e.State, Actions: []string{}}
+		if r.Agent == "" && e.Agent != nil {
+			r.Agent = e.Agent.Name
+		}
 		switch e.State {
 		case "running":
 			r.Is, r.Text, r.Reason = "landing", "Landing", "Holding "+target+". Wait for the verdict."
 		case "authorized":
 			r.Is, r.Text = "closed", "Ready"
+		case "needs-you":
+			// ADR-0411 D7: a rule holds it for the person's approval.
+			r.Is, r.Text, r.Reason = "owed", "Waits for you", "Approve it in Merge."
+			if why := hostapi.Reasons(e.Rules); why != "" {
+				r.Reason = why + ". Approve it in Merge."
+			}
+		case "needs-update":
+			// ADR-0411 D5: it conflicts with the target; its agent or the
+			// person resolves it.
+			r.Is, r.Text = "owed", "Needs an update"
+			files := "the target"
+			if e.Conflict != nil && len(e.Conflict.Files) > 0 {
+				files = strings.Join(e.Conflict.Files, ", ")
+			}
+			switch {
+			case e.Conflict != nil && e.Conflict.WaitsFor == "agent" && r.Agent != "":
+				r.Reason = "Conflicts in " + files + "; " + r.Agent + " was asked to resolve it."
+			case e.Conflict != nil && e.Conflict.WaitsFor == "agent":
+				r.Reason = "Conflicts in " + files + "; its agent was asked to resolve it."
+			default:
+				r.Reason = "Conflicts in " + files + "; it waits for you in Merge."
+			}
 		default:
 			r.Is, r.Text, r.Reason = "owed", "Waiting for you", "Merge it from its Merge card."
 		}
