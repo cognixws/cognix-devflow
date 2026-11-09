@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,21 +27,49 @@ type Client struct {
 	http  *http.Client
 }
 
-// FromEnv builds a client from the process environment; nil outside COGNIX[WS].
+// clients holds one client per daemon the process names, for the life of
+// the process. A fresh transport per call would leave every connection
+// idle in an abandoned transport — nothing closes it and the garbage
+// collector cannot reclaim it (the connection's readLoop keeps the
+// transport alive), so the sockets pile up until the ephemeral ports run
+// out.
+var (
+	clientsMu sync.Mutex
+	clients   = map[string]*Client{}
+)
+
+// FromEnv returns the process's client to the Host API; nil outside
+// COGNIX[WS]. One client serves one daemon for the life of the process, so
+// its connections are reused and their idle number stays bounded.
 func FromEnv() *Client {
 	base, tok := os.Getenv("PICODE_URL"), os.Getenv("PICODE_EXT_TOKEN")
 	if base == "" || tok == "" {
 		return nil
 	}
-	tr := &http.Transport{}
-	if ca := os.Getenv("PICODE_CA_FILE"); ca != "" {
+	ca := os.Getenv("PICODE_CA_FILE")
+	key := base + "\x00" + tok + "\x00" + ca
+	clientsMu.Lock()
+	defer clientsMu.Unlock()
+	if c, ok := clients[key]; ok {
+		return c
+	}
+	tr := &http.Transport{
+		MaxIdleConns:          4,
+		MaxIdleConnsPerHost:   2,
+		IdleConnTimeout:       30 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+	}
+	if ca != "" {
 		if pem, err := os.ReadFile(ca); err == nil {
 			pool := x509.NewCertPool()
 			pool.AppendCertsFromPEM(pem)
 			tr.TLSClientConfig = &tls.Config{RootCAs: pool}
 		}
 	}
-	return &Client{base: base, token: tok, http: &http.Client{Timeout: 10 * time.Second, Transport: tr}}
+	c := &Client{base: base, token: tok, http: &http.Client{Timeout: 10 * time.Second, Transport: tr}}
+	clients[key] = c
+	return c
 }
 
 // Workspace is one workspace the process may read.

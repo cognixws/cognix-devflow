@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -156,17 +157,27 @@ func processDown(kind string) toolResult {
 	return toolError(fmt.Sprintf("The Dev flow's background process is not running here, so it cannot run %s for you. Run it in your shell instead: %s %s", kind, exe, kind))
 }
 
+// localProcess is the process's one client to its background process. One
+// client for the life of the process reuses its connection instead of
+// leaving every call's socket idle in an abandoned client.
+var localProcess = &http.Client{Transport: &http.Transport{
+	MaxIdleConns:        4,
+	MaxIdleConnsPerHost: 2,
+	IdleConnTimeout:     30 * time.Second,
+}}
+
 func call(info serveInfo, method, path string, body any) (*Run, error) {
 	var rd io.Reader
 	if body != nil {
 		b, _ := json.Marshal(body)
 		rd = bytes.NewReader(b)
 	}
-	req, _ := http.NewRequest(method, "http://127.0.0.1:"+strconv.Itoa(info.Port)+path, rd)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(toolWait+10)*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, method, "http://127.0.0.1:"+strconv.Itoa(info.Port)+path, rd)
 	req.Header.Set("X-Flow-Token", info.Token)
 	req.Header.Set("Content-Type", "application/json")
-	cl := &http.Client{Timeout: time.Duration(toolWait+10) * time.Second}
-	resp, err := cl.Do(req)
+	resp, err := localProcess.Do(req)
 	if err != nil {
 		return nil, err
 	}
