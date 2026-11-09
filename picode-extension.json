@@ -2,7 +2,7 @@
   "id": "devflow",
   "formerly": ["picode-devflow"],
   "name": "Dev flow",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "apiVersion": 20,
   "publisher": "COGNIX[WS]",
   "description": "The development flow for any stack: one worktree per agent, the checks each change needs, a close that lists what is still owed, handoff notes, debts and decision records. Your project binds it to its own commands in .picode.json.",
@@ -188,7 +188,8 @@
                     "decision-table",
                     "dev-flow-setup",
                     "ui-review",
-                    "failure-review"
+                    "failure-review",
+                    "query-cost"
                   ]
                 }
               },
@@ -208,7 +209,8 @@
       "skills/decision-table",
       "skills/dev-flow-setup",
       "skills/ui-review",
-      "skills/failure-review"
+      "skills/failure-review",
+      "skills/query-cost"
     ]
   },
   "permissions": [

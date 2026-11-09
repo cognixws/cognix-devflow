@@ -36,7 +36,10 @@ each answer ends with the next step:
 
 Skills (`quality-gate`, `handoff-note`, `decision-record`, `decision-table`)
 ride the launch on the CLIs that take them; nothing is written to your
-repository. Long runs happen in the extension's background process
+repository. One more is optional: `query-cost` teaches an agent to give a
+project a check of its own that catches expensive queries (SQLite, Postgres,
+MySQL); setup offers it only when the repository holds a database, and never
+adds the check by itself. Long runs happen in the extension's background process
 (`flow serve`), one per checkout at a time, two at once; results stay in the
 extension's data folder.
 

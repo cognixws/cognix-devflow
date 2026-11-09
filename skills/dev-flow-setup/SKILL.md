@@ -71,6 +71,20 @@ Add (or extend) `.picode.json` at the repository root:
   `{"name":"api","paths":["src/server/**"],"tests":["src/server/**/*.test.ts"],"boundary":"a handler answers a readable status; nothing throws past the error middleware"}`.
   Ask the person before adding it: every change to a layer then owes a
   `failure-review:` line in the note (see the failure-review guide).
+- Offer the `query-cost` guide only when the repository holds a database:
+  run this from the root and open what it lists.
+
+  ```sh db-signals
+  { git ls-files | grep -Ei '\.(sql|sqlite3?|db)$|(^|/)(migrations?|prisma)/'; git grep -lEi 'd1_databases|image: *.?(postgres|mysql|mariadb)|sqlite3?|psycopg|sqlx|knex|prisma|drizzle' -- ':!*.md' ':!*.txt'; } | sort -u
+  ```
+
+  A hit is a lead, not proof: a file that only mentions a database does not
+  make one. Nothing listed, or nothing real behind it: say nothing about
+  it. Found one: say in one line what the guide does (a check that reads
+  the query plans against the project's real schema and fails on a full
+  scan unless the query is a named exception) and ask. **Never add the
+  check yourself, and take a "no" as the answer**; the guide is read with
+  `flow guide query-cost`.
 - Keep the file's other keys (`setup`, `run`, `teardown`) as they are.
 
 Call the Dev flow **status** tool: it must read the contract without an
