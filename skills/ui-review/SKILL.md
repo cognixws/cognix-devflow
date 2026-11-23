@@ -1,6 +1,6 @@
 ---
 name: ui-review
-description: Review a screen change before the first edit and judge it from screenshots you actually read after — empty, blocked and error states included, both themes, phone width. The handoff note carries "uiux-review:" and "visual-review:" verdict lines; a FAIL never lands.
+description: Review a screen change before the first edit and judge it from screenshots you actually read after — empty, blocked and error states included; every state once, both themes at each width only for layout-distinct states. The handoff note carries "uiux-review:" and "visual-review:" verdict lines; a FAIL never lands.
 ---
 
 # UI review
@@ -37,10 +37,26 @@ components, the benchmark it follows). Then hold the change to these:
 1. **Run** the change on a throwaway instance, never production or the
    person's own session.
 2. **Drive** it with a headless browser (snapshot refs, then clicks).
-3. **Capture** at desktop width and at phone width (390 px), in light and
-   dark: the happy state **and** the empty, blocked or error state you
-   changed, and a long/many state for lists (100+ rows, the longest real
-   name). Open every overlay you touched.
+3. **Capture** the happy state, **and** every empty, blocked or error state
+   you changed, a long/many state for lists (100+ rows, the longest real
+   name), and every overlay you touched, open. How many:
+   - **Every state once**, at the surface's primary width and theme (the
+     ones most of its users see). Force the theme: a headless browser often
+     reports light, so an app that follows the system theme renders light.
+   - **Both themes at each width the surface has** (desktop and phone,
+     390 px, when it has both) only for a **layout-distinct** state — a
+     different arrangement, not only different words: the surface's main
+     populated state; each dialog or sheet; any state whose CSS or
+     structure your change touches.
+   - **List the states you treated as layout-distinct, with the reason**
+     for each, in the reply and the note. The reader can disagree.
+   - **After a fix, re-capture only the states the fix changed.**
+
+   Example: a settings page on desktop and phone with 20 states, 15 of
+   which differ only in words. The populated list, 2 dialogs and 2 states
+   whose CSS the change touched are layout-distinct: 15 × 1 + 5 × 4 =
+   **35 captures**; the full matrix would be 20 × 4 = 80. A fix to one
+   dialog re-captures that dialog's 4.
 4. **Read** every screenshot as an image — in a subagent when your CLI has
    them, so images never fill the main session. Keep screenshots out of git.
 5. **Judge**. Instant FAIL, on anything your change touched:
@@ -60,5 +76,5 @@ Write both lines into the note, with what was checked:
 
 ```
 uiux-review: PASS (empty state: title + sentence + Add; 36 px row; tokens only)
-visual-review: PASS (subagent read 8 shots: 1280/390 × light/dark, empty + error)
+visual-review: PASS (subagent read 35 shots: 15 states once at 1280 dark; 5 layout-distinct × 1280/390 × dark/light — list: main state; 2 dialogs; empty + error: CSS changed)
 ```

@@ -16,7 +16,7 @@ your CLI has subagents, in a subagent — never at the peak of a long session.
 # <branch> — <one line: what changed>
 
 - What landed: <commits or the behavior, in a line or two>
-- Verified: <the checks, and the effect you saw>
+- Verified: <the checks, the effect you saw, the independent review's verdict (quality-gate)>
 - Not verified: <honestly, what nobody looked at>
 
 ## Next up

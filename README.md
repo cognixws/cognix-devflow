@@ -34,9 +34,14 @@ each answer ends with the next step:
 | `guide` | A craft guide's text, for CLIs that load no skills at launch |
 | `agents` | The Dev flow block in `AGENTS.md`: missing, older, current or edited by hand; `write` puts the current one in place, never over a person's edit without `force` |
 
-Skills (`quality-gate`, `handoff-note`, `decision-record`, `decision-table`)
-ride the launch on the CLIs that take them; nothing is written to your
-repository. One more is optional: `query-cost` teaches an agent to give a
+Skills (`quality-gate`, `handoff-note`, `decision-record`, `decision-table`,
+`failure-review`, `ui-review`, `dev-flow-setup`) ride the launch on the CLIs
+that take them; nothing is written to your repository. `quality-gate` ends
+with one independent review: the builder hands the diff and a fixed brief to
+a fresh-context agent that did not write the code, and reports its findings
+verbatim. `ui-review` captures every state once at the surface's primary
+width and theme, and both themes at each width only for layout-distinct
+states. One more is optional: `query-cost` teaches an agent to give a
 project a check of its own that catches expensive queries (SQLite, Postgres,
 MySQL); setup offers it only when the repository holds a database, and never
 adds the check by itself. Long runs happen in the extension's background process
