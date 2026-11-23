@@ -1,36 +1,46 @@
 package validate
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/cognixws/cognix-devflow/skills"
 )
 
+// mentionsVerdict finds a line that looks like a verdict line, however
+// mangled: a lost colon, a list bullet, a different case.
+var mentionsVerdict = regexp.MustCompile(`(?i)(uiux|visual)[- ]?review`)
+
 // The verdict lines the ui-review guide tells an agent to write are the ones
-// the close parses: every example "uiux-review:" / "visual-review:" line in
-// the guide matches verdictLine, and both kinds appear with PASS.
+// the close parses: every line of a code block in the guide that mentions a
+// verdict matches verdictLine, and the guide shows exactly two of each kind
+// (the template and the worked example), both PASS.
 func TestUIReviewGuideLinesParse(t *testing.T) {
 	b, err := skills.FS.ReadFile("ui-review/SKILL.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[string]bool{}
+	count := map[string]int{}
+	inCode := false
 	for _, line := range strings.Split(string(b), "\n") {
-		l := strings.TrimSpace(line)
-		if !strings.HasPrefix(l, "uiux-review:") && !strings.HasPrefix(l, "visual-review:") {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			inCode = !inCode
 			continue
 		}
-		m := verdictLine.FindStringSubmatch(l)
+		if !inCode || !mentionsVerdict.MatchString(line) {
+			continue
+		}
+		m := verdictLine.FindStringSubmatch(line)
 		if m == nil {
-			t.Errorf("the guide's line does not parse: %q", l)
+			t.Errorf("the guide's verdict line does not parse: %q", line)
 			continue
 		}
-		got[m[1]+" "+m[2]] = true
+		count[m[1]+" "+m[2]]++
 	}
 	for _, want := range []string{"uiux-review PASS", "visual-review PASS"} {
-		if !got[want] {
-			t.Errorf("the guide shows no %q line", want)
+		if count[want] != 2 {
+			t.Errorf("the guide shows %d %q lines, want 2 (template and example)", count[want], want)
 		}
 	}
 }

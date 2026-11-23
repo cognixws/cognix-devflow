@@ -43,8 +43,8 @@ Your own review misses what a fresh reader finds. Before you report a
 change to product code as done, start **one** independent review yourself.
 This is not a new gate: it replaces waiting for whoever assigned the task
 (a coordinator, a lead, the person) to send a reviewer. They may still ask
-for another, and should for anything that touches a security boundary,
-real user data or money.
+for another, and do for anything that touches a security boundary, real
+user data or money.
 
 1. **Reviewer**: an agent that did not write the code — a subagent with a
    fresh context, on the strongest model your CLI offers. Not this
@@ -52,15 +52,16 @@ real user data or money.
 2. **Given**: the diff range and the brief below, unchanged but for the
    placeholders. Not your conclusions, test claims or summary.
 3. **Read-only**: it edits, commits and runs nothing that changes state.
-4. **After**: fix each finding with a test that fails first, then report
-   with the verdict and findings attached **verbatim**, not summarised. A
-   finding you believe is wrong is never fixed silently or dropped: it
-   stays in the report with your reason, and the work is not done until
-   whoever assigned it decides.
-5. **Docs-only changes** get a fact-check review in the same shape: in the
-   brief, "Hunt" becomes "each claim in the diff, checked against the
-   source it cites and against the code it describes; a claim with no
-   source is a finding."
+4. **After**: fix each finding with a test that fails first, close again,
+   then report with the verdict and findings attached **verbatim**, not
+   summarised. A finding you believe is wrong is never fixed silently or
+   dropped: it stays in the report with your reason, and the work is not
+   done until whoever assigned it decides.
+5. **Docs-only changes and study branches** (research, investigation) get
+   a fact-check review in the same shape: in the brief, the "Hunt, layer
+   by layer:" block and its bullets become "Check each claim in the diff
+   against the source it cites and against the code it describes; a claim
+   with no source is a finding."
 6. **No subagents in your CLI?** Ask the person or the coordinator for the
    review, and wait for it. Reviewing your own change in the same
    conversation is not independent; never call it that.

@@ -42,7 +42,7 @@ components, the benchmark it follows). Then hold the change to these:
    name), and every overlay you touched, open. How many:
    - **Every state once**, at the surface's primary width and theme (the
      ones most of its users see). Force the theme: a headless browser often
-     reports light while the app follows the system.
+     reports light, so an app that follows the system theme renders light.
    - **Both themes at each width the surface has** (desktop and phone,
      390 px, when it has both) only for a **layout-distinct** state — a
      different arrangement, not only different words: the surface's main
