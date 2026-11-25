@@ -388,11 +388,6 @@ func (c *Contract) validate() error {
 			if !oneLine(s) || len(s) > 200 {
 				return fmt.Errorf("audit.ignore[%d] must be one CSS selector of at most 200 characters", i)
 			}
-			// COGNIX[WS] refuses a selector that reads a value attribute
-			// (whether it matched shows in the answer); say so here first.
-			if strings.Contains(strings.ToLower(strings.ReplaceAll(s, " ", "")), "[value") {
-				return fmt.Errorf("audit.ignore[%d] reads a value attribute; name the element by its class, id or role", i)
-			}
 		}
 		for _, r := range a.Rules {
 			if !auditRules[r] {

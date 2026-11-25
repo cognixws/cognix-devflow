@@ -57,7 +57,6 @@ func TestParseRefusals(t *testing.T) {
 		"audit font floor":        `{"flow":1,"audit":{"minFontPx":0}}`,
 		"audit unknown rule":      `{"flow":1,"audit":{"rules":["slop"]}}`,
 		"audit unknown field":     `{"flow":1,"audit":{"minFont":10}}`,
-		"audit value selector":    `{"flow":1,"audit":{"ignore":[":has(input[value^=h])"]}}`,
 		"audit two-line selector": `{"flow":1,"audit":{"ignore":[".a\n.b"]}}`,
 	}
 	for name, sec := range cases {
