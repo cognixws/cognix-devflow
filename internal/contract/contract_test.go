@@ -54,11 +54,27 @@ func TestParseRefusals(t *testing.T) {
 		"layer bad glob":          `{"flow":1,"modules":["handoff"],"failure":{"layers":[{"name":"a","paths":["/a"],"tests":["b"],"boundary":"x"}]}}`,
 		"layer check clash":       `{"flow":1,"modules":["handoff"],"checks":{"failure-a":{"run":"x"}},"failure":{"layers":[{"name":"a","paths":["a"],"tests":["b"],"boundary":"x","check":"y"}]}}`,
 		"layer unknown field":     `{"flow":1,"modules":["handoff"],"failure":{"layers":[{"name":"a","paths":["a"],"tests":["b"],"boundary":"x","chek":"y"}]}}`,
+		"audit font floor":        `{"flow":1,"audit":{"minFontPx":0}}`,
+		"audit unknown rule":      `{"flow":1,"audit":{"rules":["slop"]}}`,
+		"audit unknown field":     `{"flow":1,"audit":{"minFont":10}}`,
+		"audit two-line selector": `{"flow":1,"audit":{"ignore":[".a\n.b"]}}`,
 	}
 	for name, sec := range cases {
 		if _, err := Parse([]byte(sec)); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
+	}
+}
+
+// The page audit's defaults (read by COGNIX[WS]'s browser tool) parse, and
+// change the digest like any other field.
+func TestParseAudit(t *testing.T) {
+	c, err := Parse([]byte(`{"flow":1,"audit":{"minFontPx":11,"ignore":[".ad-banner","#chat-widget"],"rules":["contrast","placeholder-contrast"]}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Audit == nil || *c.Audit.MinFontPx != 11 || len(c.Audit.Ignore) != 2 || len(c.Audit.Rules) != 2 {
+		t.Fatalf("audit = %+v", c.Audit)
 	}
 }
 

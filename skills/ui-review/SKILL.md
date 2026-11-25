@@ -11,7 +11,7 @@ verdicts close the change, both written in the handoff note:
 
 ```
 uiux-review: PASS (what you checked, in one line)
-visual-review: PASS (which screenshots, read where)
+visual-review: PASS (which screenshots, read where; browser audit: findings)
 ```
 
 `FAIL` on either stops the close (module `ui-review`). Never write PASS from
@@ -66,9 +66,21 @@ components, the benchmark it follows). Then hold the change to these:
    - a row of controls with uneven heights or tops;
    - a hover that paints the same colour as its parent;
    - contrast below the bar, or a page that scrolls sideways at 390 px.
-   If the project ships a page audit (contrast, clipping, overflow), run it
-   after each overlay opens; a finding on what you changed is a FAIL.
-6. **Fix or FAIL.** Seeing a defect and calling the change done is the one
+6. **Audit** each captured state with COGNIX[WS]'s page audit: open the
+   state in your browser tab (`browser` verb `open`/`navigate`, the same
+   width and theme as the capture; open each overlay you touched first),
+   then call `browser` with verb `audit`. It measures what a screenshot
+   shows too late — contrast of text and placeholders, text cut or covered,
+   a menu cut by its container, text under the floor, sideways scroll —
+   and names each finding's element. The project's defaults come from
+   `extensions.devflow.audit` in `.picode.json` (`minFontPx`, `ignore`,
+   `rules`). A finding on what you changed is a FAIL; a deliberate one is
+   marked in the markup, `data-audit-ok="<rule>: <reason>"`, so the reason
+   is in the diff. Findings outside your change are debts in the topic
+   file. Write the result into the visual-review line: `audit 0 findings`,
+   or the waivers you added. Outside COGNIX[WS] (no `browser` tool), run
+   the project's own page audit if it ships one, and say which.
+7. **Fix or FAIL.** Seeing a defect and calling the change done is the one
    thing this review exists to stop. A defect that is not in your change
    goes to the topic file as a debt.
 
@@ -76,5 +88,5 @@ Write both lines into the note, with what was checked:
 
 ```
 uiux-review: PASS (empty state: title + sentence + Add; 36 px row; tokens only)
-visual-review: PASS (subagent read 35 shots: 15 states once at 1280 dark; 5 layout-distinct × 1280/390 × dark/light — list: main state; 2 dialogs; empty + error: CSS changed)
+visual-review: PASS (subagent read 35 shots: 15 states once at 1280 dark; 5 layout-distinct × 1280/390 × dark/light — list: main state; 2 dialogs; empty + error: CSS changed; browser audit 0 findings on all 35)
 ```

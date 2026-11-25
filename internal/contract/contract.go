@@ -100,6 +100,10 @@ type Contract struct {
 	// Failure declares the project's layers and the boundary each keeps
 	// (the failure-review gate): absent, nothing about it changes.
 	Failure *Failure `json:"failure,omitempty"`
+	// Audit is the project's defaults for COGNIX[WS]'s page audit (the
+	// browser tool's audit verb reads them from here); the engine only
+	// checks their shape.
+	Audit *Audit `json:"audit,omitempty"`
 
 	digest string
 }
@@ -121,6 +125,16 @@ type Layer struct {
 	Tests    []string `json:"tests"`
 	Check    string   `json:"check,omitempty"`
 }
+
+// Audit is the page audit's per-project defaults: the tiny-text floor,
+// selectors left out (a third-party widget) and the rules to run.
+type Audit struct {
+	MinFontPx *float64 `json:"minFontPx,omitempty"`
+	Ignore    []string `json:"ignore,omitempty"`
+	Rules     []string `json:"rules,omitempty"`
+}
+
+var auditRules = map[string]bool{"contrast": true, "placeholder-contrast": true, "clipped-text": true, "covered-text": true, "clipped-layer": true, "tiny-text": true, "page-overflow": true}
 
 // FailureCheckPrefix names the check a layer's Check becomes.
 const FailureCheckPrefix = "failure-"
@@ -362,6 +376,24 @@ func (c *Contract) validate() error {
 	}
 	if c.NoteMaxLines < 0 {
 		return errors.New("noteMaxLines must be positive")
+	}
+	if a := c.Audit; a != nil {
+		if a.MinFontPx != nil && (*a.MinFontPx < 1 || *a.MinFontPx > 48) {
+			return errors.New("audit.minFontPx must be from 1 to 48")
+		}
+		if len(a.Ignore) > 20 {
+			return errors.New("audit.ignore takes at most 20 selectors")
+		}
+		for i, s := range a.Ignore {
+			if !oneLine(s) || len(s) > 200 {
+				return fmt.Errorf("audit.ignore[%d] must be one CSS selector of at most 200 characters", i)
+			}
+		}
+		for _, r := range a.Rules {
+			if !auditRules[r] {
+				return fmt.Errorf("audit.rules: %q is unknown (contrast, placeholder-contrast, clipped-text, covered-text, clipped-layer, tiny-text, page-overflow)", r)
+			}
+		}
 	}
 	if f := c.Failure; f != nil {
 		if !c.HasModule("handoff") {
