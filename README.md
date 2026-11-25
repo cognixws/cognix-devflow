@@ -41,7 +41,7 @@ with one independent review: the builder hands the diff and a fixed brief to
 a fresh-context agent that did not write the code, and reports its findings
 verbatim. `ui-review` captures every state once at the surface's primary
 width and theme, and both themes at each width only for layout-distinct
-states. One more is optional: `query-cost` teaches an agent to give a
+states, and runs COGNIX[WS]'s page audit (`browser` verb `audit`) on each. One more is optional: `query-cost` teaches an agent to give a
 project a check of its own that catches expensive queries (SQLite, Postgres,
 MySQL); setup offers it only when the repository holds a database, and never
 adds the check by itself. Long runs happen in the extension's background process
@@ -112,6 +112,7 @@ Add a section to `.picode.json` at the root of your repository:
 | `modules` | `handoff`, `changelog`, `decisions`, `books`, `ui-review` |
 | `ui` | Paths whose change owes a UI review (module `ui-review`, which needs `handoff`); default: `.jsx`, `.tsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.html` files. The note carries `uiux-review:` and `visual-review:` lines; `FAIL` stops the close |
 | `failure` | The failure-review gate (needs `handoff`): `layers`, each with `name`, `paths` (its code), `boundary` (one line: where its failures stop), `tests` (the files that prove it) and an optional `check` (a command, best a ratchet, that runs as the check `failure-<name>` when the layer is touched). A change to a layer's code owes `failure-review: <layer> PASS (<test>)` in the note with a changed test of that layer, or `n/a — <reason>`; `FAIL` stops the close. Absent, nothing changes |
+| `audit` | Defaults for COGNIX[WS]'s page audit (the browser tool's `audit` verb, which `ui-review` runs on each captured state): `minFontPx` (the small-text floor, default 10), `ignore` (up to 20 CSS selectors left out, such as a third-party widget) and `rules` (a subset of `contrast`, `placeholder-contrast`, `clipped-text`, `covered-text`, `clipped-layer`, `tiny-text`, `page-overflow`). The engine only checks their shape |
 | `noteMaxLines` | Default 25 |
 | `quarantine` | A file of test names (one per line) whose failures do not fail a check |
 | `land` | The project's own land command, run from the main checkout with `{branch}` filled in; without it, changes land through Merge |
